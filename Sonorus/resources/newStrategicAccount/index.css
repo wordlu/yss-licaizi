@@ -1,0 +1,91 @@
+.select-header{
+  margin: 0;
+}
+.select-btn-box {
+  float: right;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.form-box {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.form-box>.el-form-item {
+  margin-bottom: 10px;
+}
+
+.table-content{
+  overflow: hidden;
+}
+
+.table-box{
+  height: 100% !important;
+}
+
+.table-box tr,.table-box td{
+  height: 30px !important;
+  padding: 0 !important;
+  line-height: 30px !important;
+}
+
+.table-box th{
+  height: 40px !important;
+  padding: 0 !important;
+  line-height: 40px !important;
+}
+
+.dialog{
+  height: 80vh;
+  overflow-y: scroll;
+}
+
+.el-form--inline .el-form-item__label{
+  height: 30px;
+}
+
+.el-dialog__body{
+  padding: 5px 10px;
+}
+
+.table-box tr,
+.table-box td,
+.table-box th {
+  height: 40px !important;
+  padding: 0 !important;
+  line-height: 40px !important;
+}
+
+/* .form-content {
+  height: 80%;
+  overflow-y: scroll;
+} */
+
+.select-header .el-form-item__label{
+  height: auto;
+  line-height: 30px;
+}
+
+.btn-box{
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+.search-row-box{
+  display: flex;
+}
+
+.search-col{
+  flex:1;
+  margin-right: 10px;
+}
+
+.select-header .el-form-item__content{
+  width: 100%;
+}

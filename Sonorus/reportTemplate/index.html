@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script
+      type="text/javascript"
+      src="../resources/babel/browser.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="../resources/babel-polyfill/dist/polyfill.js"
+    ></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="../resources/vue/vue-2.5.17.js"></script>
+    <link
+      rel="stylesheet"
+      href="../resources/element-ui/lib/theme-chalk/index.css"
+    />
+    <script src="../resources/element-ui/lib/index.js"></script>
+    <script src="../resources/axios/dist/axios.js"></script>
+
+    <script src="../resources/utils/helper.js"></script>
+    <script src="../resources/reportTemplate/api.js"></script>
+
+    <!-- css -->
+    <link rel="stylesheet" href="../resources/utils/index.css" />
+    <link rel="stylesheet" href="../resources/reportTemplate/index.css" />
+    <title>报告模板维护</title>
+    <script type="text/javascript">
+      var reportTemplateRoot = "";
+    </script>
+  </head>
+  <body>
+    <div id="mainApp" style="display: none">
+      <div class="container">
+        <div class="left-container">
+          <div
+            style="
+              height: 50%;
+              overflow-y: auto;
+              padding: 5px;
+              box-sizing: border-box;
+            "
+          >
+            <el-tree
+              :data="reportTmpQueyData"
+              :props="defaultProps"
+              :expand-on-click-node="false"
+              :highlight-current="true"
+              default-expand-all
+              node-key="id"
+              @node-click="handleNodeClick"
+            >
+              <span class="custom-tree-node" slot-scope="scope">
+                <span>{{ scope.node.label }}</span>
+                <span v-show="scope.data.level<'3'">
+                  <el-button
+                    type="text"
+                    size="mini"
+                    @click.stop="append(scope.node,scope.data)"
+                  >
+                    添加
+                  </el-button>
+                </span>
+              </span>
+            </el-tree>
+          </div>
+          <div
+            style="
+              height: 50%;
+              overflow-y: auto;
+              padding: 5px;
+              border-top: 1px dashed #ccc;
+              box-sizing: border-box;
+            "
+          >
+            <el-tree
+              :data="reportIndexQueyData"
+              :props="defaultProps"
+              default-expand-all
+              :expand-on-click-node="false"
+              node-key="id"
+            >
+              <span class="custom-tree-node" slot-scope="scope">
+                <span>{{ scope.node.label }}</span>
+              </span>
+            </el-tree>
+          </div>
+        </div>
+        <div class="right-container">
+          <div class="btn-container">
+            <div>
+              <el-button type="primary" size="mini" @click="addRow"
+                >插入行</el-button
+              >
+              <el-button type="primary" size="mini" @click="addColumn"
+                >插入列</el-button
+              >
+              <el-button type="danger" size="mini" @click="handleDelete"
+                >批量删除</el-button
+              >
+            </div>
+            <div>
+              <el-button type="primary" size="mini" @click="handleSubmit"
+                >保存</el-button
+              >
+              <el-button type="primary" size="mini" @click="exportExcel"
+                >导出excel</el-button
+              >
+            </div>
+          </div>
+          <el-form
+            v-show="searchData.reportId"
+            :model="formTableData"
+            class="form-table-container"
+          >
+            <el-table
+              :data="formTableData.tableData"
+              border
+              class="table-box"
+              @selection-change="handleSelectionChange"
+              :height="height"
+              style="width: 100%"
+              v-loading="loading"
+              ref="table"
+            >
+              <el-table-column type="selection" width="55"> </el-table-column>
+              <!-- <el-table-column>
+                <template slot-scope="scope">
+                  <el-button
+                    size="mini"
+                    type="danger"
+                    @click="handleDelete(scope)">删除</el-button>
+                </template>
+              </el-table-column> -->
+
+              <el-table-column
+                v-for="(item,index) in column"
+                :key="item+index"
+                align="center"
+                width="100"
+              >
+                <template slot="header" slot-scope="scope">
+                  <el-button size="mini" type="text">{{index+1}}</el-button>
+                  <i
+                    class="el-icon-delete delete-btn"
+                    @click="deleteColumn('column'+item,index)"
+                  ></i>
+                </template>
+                <template slot-scope="scope">
+                  <el-form-item
+                    :prop="'tableData.'+scope.$index+'.column'+item"
+                  >
+                    <el-tooltip class="item" placement="top">
+                      <div slot="content">{{scope.row['column'+item]}}</div>
+                      <el-input
+                        v-model="scope.row['column'+item]"
+                        size="mini"
+                        placeholder="请输入"
+                        @change="handleChange(scope)"
+                      ></el-input>
+                    </el-tooltip>
+                  </el-form-item>
+                </template>
+                <!-- <template slot="header" slot-scope="scope">
+                  <el-button size="mini" type="text">{{index+1}}</el-button>
+                  <i
+                    class="el-icon-delete delete-btn"
+                    @click="deleteColumn('column'+item,index)"
+                  ></i>
+                </template>
+                <template slot-scope="{row,$index}">
+                  <el-form-item :prop="'tableData.'+$index+'.column'+item">
+                    <el-input
+                      v-model="row['column'+`${item}`]"
+                      size="mini"
+                      placeholder="请输入"
+                      @change="isChange = true"
+                    ></el-input>
+                  </el-form-item>
+                </template> -->
+              </el-table-column>
+            </el-table>
+          </el-form>
+        </div>
+      </div>
+    </div>
+    <script type="text/babel">
+      let vue = new Vue({
+        el: "#mainApp",
+        data() {
+          return {
+            defaultProps: {
+              children: "children",
+              label: "name",
+            },
+            reportTmpQueyData: [],
+            reportIndexQueyData: [],
+            formTableData: {
+              tableData: [],
+            },
+            column: [],
+            isChange: false,
+            selectionData: [],
+            loading: false,
+            height: null,
+            searchData: {},
+          };
+        },
+        mounted() {
+          this.height =
+            document.getElementsByClassName("right-container")[0].offsetHeight -
+            document.getElementsByClassName("btn-container")[0].offsetHeight +
+            "px";
+          this.searchTree();
+        },
+        created: function () {
+          document.getElementById("mainApp").style.display = "block";
+        },
+        computed: {},
+        watch: {},
+        methods: {
+          // 左侧树
+          searchTree() {
+            reportTmpQuey().then(({ data }) => {
+              if (data) {
+                this.reportTmpQueyData = data;
+              }
+            });
+
+            reportIndexQuey().then(({ data }) => {
+              if (data) {
+                this.reportIndexQueyData = data;
+              }
+            });
+          },
+          // 左侧树点击
+          handleNodeClick(data) {
+            if (data.level == "3") {
+              // 查询
+              console.log(data.id);
+              this.searchData = {
+                reportId: data.id,
+                name: data.name,
+              };
+              // const size = Number("5");
+              // let arr = [];
+              // for(let i = 0;i<size;i++){
+              //   arr.push(i+1);
+
+              // }
+              // console.log(arr)
+              this.search();
+            } else {
+              this.$message({
+                showClose: true,
+                message: "只能选择三级进行查询",
+                type: "error",
+              });
+            }
+          },
+          // 查询
+          search() {
+            searchReportTemplate({ reportId: this.searchData.reportId }).then(
+              (data) => {
+                if (data) {
+                  this.column = data.columns || [];
+                  this.formTableData.tableData = data.list || [];
+                  this.isChange = false;
+                }
+              }
+            );
+          },
+          // 左侧树插入子节点-添加
+          append(node, data) {
+            console.log(node, data);
+            // this.$prompt(`请添加<${data.name}>的子节点`, "添加", {
+            this.$prompt("请添加<" + data.name + ">的子节点", "添加", {
+              confirmButtonText: "确定",
+              cancelButtonText: "取消",
+              inputPattern: /\S/,
+              inputErrorMessage: "不能为空",
+            })
+              .then(({ value }) => {
+                // 发请求
+                const params = {
+                  parentId: data.id,
+                  level: Number(data.level) + 1,
+                  name: value,
+                };
+
+                console.log(params);
+
+                // 成功-请求树，失败-提示添加失败
+                reportTmpAdd(params).then(({ data }) => {
+                  if (data) {
+                    reportTmpQuey().then(({ data }) => {
+                      if (data) {
+                        this.reportTmpQueyData = data;
+                      }
+                    });
+                    this.$message({
+                      type: "success",
+                      message: "添加成功",
+                    });
+                  } else {
+                    this.$message({
+                      type: "error",
+                      message: "添加失败",
+                    });
+                  }
+                });
+
+                // const newChild = {
+                //   id: data.id + 1 + "",
+                //   name: value,
+                //   nodeLevel: Number(data.nodeLevel) + 1,
+                //   children: [],
+                // };
+                // if (!data.children) {
+                //   this.$set(data, "children", []);
+                // }
+                // data.children.push(newChild);
+              })
+              .catch(() => {});
+          },
+          // 插入行
+          addRow() {
+            if (this.searchData.reportId) {
+              // this.isChange = true;
+              const obj = { isAdd: true };
+              this.column.forEach((item) => {
+                obj["column" + item] = "";
+              });
+              this.formTableData.tableData.push(obj);
+            } else {
+              this.$message({
+                showClose: true,
+                message: "请选择左侧节点查询后才能操作",
+                type: "warning",
+              });
+            }
+          },
+          // 插入列
+          addColumn() {
+            if (this.searchData.reportId) {
+              // this.isChange = true;
+              if (this.column.length) {
+                const index = this.column[this.column.length - 1];
+
+                const strIndex = String(Number(index) + 1);
+                this.column.push(strIndex);
+                console.log(this.column);
+                this.formTableData.tableData = this.formTableData.tableData.map(
+                  (item) => ({
+                    ...item,
+                    ["column" + strIndex]: "",
+                  })
+                );
+              } else {
+                this.column = ["1"];
+                this.formTableData.tableData = this.formTableData.tableData.map(
+                  (item) => ({
+                    ...item,
+                    column1: "",
+                  })
+                );
+              }
+              this.$nextTick(() => {
+                this.$refs.table.doLayout();
+              });
+            } else {
+              this.$message({
+                showClose: true,
+                message: "请选择左侧节点查询后才能操作",
+                type: "warning",
+              });
+            }
+          },
+          // 删除列
+          deleteColumn(column, index) {
+            console.log(column, index);
+            this.isChange = true;
+
+            const data = this.formTableData.tableData.map((item) => {
+              const obj = { ...item };
+              delete obj[column];
+
+              return {
+                ...obj,
+              };
+            });
+
+            // this.column.splice(index, 1);
+            this.$delete(this.column, index);
+            this.formTableData.tableData = data;
+            console.log("----删除列----", this.column, data);
+          },
+          // 复选行
+          handleSelectionChange(selection) {
+            console.log(selection);
+            this.selectionData = selection;
+          },
+          // 批量删除
+          handleDelete() {
+            if (this.searchData.reportId) {
+              const data = this.formTableData.tableData.filter(
+                (item) => item.isChange
+              );
+              // if (this.isChange) {
+              if (data.length || this.isChange) {
+                this.$message({
+                  showClose: true,
+                  message: "请先保存，才能删除",
+                  type: "warning",
+                });
+              } else if (!this.selectionData.length) {
+                this.$message({
+                  showClose: true,
+                  message: "请选择要删除项",
+                  type: "warning",
+                });
+              } else {
+                this.$confirm("确定要删除么?", "提示", {
+                  confirmButtonText: "确定",
+                  cancelButtonText: "取消",
+                  type: "warning",
+                })
+                  .then(() => {
+                    const arr = this.selectionData.filter(
+                      (item) => !item.isAdd
+                    );
+                    if (arr.length) {
+                      // 走删除接口
+                      deleteReportTemplate(arr).then(({ data }) => {
+                        if (data) {
+                          this.$message({
+                            showClose: true,
+                            message: "删除成功",
+                            type: "success",
+                          });
+                          this.search();
+                        } else {
+                          this.$message({
+                            showClose: true,
+                            message: "删除失败",
+                            type: "error",
+                          });
+                        }
+                      });
+                    } else {
+                      this.$message({
+                        showClose: true,
+                        message: "删除成功",
+                        type: "success",
+                      });
+                      this.search();
+                    }
+                  })
+                  .catch(() => {
+                    console.log("取消删除");
+                  });
+              }
+            } else {
+              this.$message({
+                showClose: true,
+                message: "请选择左侧节点查询后才能操作",
+                type: "warning",
+              });
+            }
+          },
+          // 保存
+          handleSubmit() {
+            console.log(1111111, this.formTableData.tableData);
+            if (this.searchData.reportId) {
+              const data = this.formTableData.tableData.filter(
+                (item) => item.isChange
+              );
+              if (!data.length && !this.isChange) {
+                // if (!this.isChange) {
+                this.$message({
+                  showClose: true,
+                  message: "没有修改数据，无需保存",
+                  type: "warning",
+                });
+              } else {
+                // console.log(1111, this.formTableData.tableData);
+                const data = this.formTableData.tableData.map((item) => {
+                  if (item) {
+                    const obj = { ...item };
+                    delete obj.id;
+                    delete obj.size;
+                    delete obj.isChange;
+                    delete obj.isAdd;
+                    let arr = [];
+                    for (const [key, val] of Object.entries(obj)) {
+                      // console.log(22222,key,val)
+                      arr.push(val);
+                    }
+                    return arr;
+                    // const items = Object.values(obj);
+                    // console.log(3333,obj,items)
+                    // return items;
+                  }
+                  return undefined;
+                });
+                const params = {
+                  columnSize: this.column.length,
+                  reportId: this.searchData.reportId,
+                  data,
+                };
+                // 走保存接口
+                console.log(22222, params);
+                submit(params).then(({ data }) => {
+                  if (data) {
+                    this.$message({
+                      showClose: true,
+                      message: "保存成功",
+                      type: "success",
+                    });
+                    this.search();
+                  } else {
+                    this.$message({
+                      showClose: true,
+                      message: "保存失败",
+                      type: "error",
+                    });
+                  }
+                });
+              }
+            } else {
+              this.$message({
+                showClose: true,
+                message: "请选择左侧节点查询后才能操作",
+                type: "warning",
+              });
+            }
+          },
+          // input 改变
+          handleChange({ row, $index }) {
+            // this.isChange = true;
+            console.log("变了", row, $index);
+            const rows = { ...row, isChange: true };
+            this.$set(this.formTableData.tableData, $index, rows);
+          },
+          // 导出表格
+          exportExcel() {
+            if (this.searchData.reportId) {
+              if (this.isChange) {
+                this.$message({
+                  showClose: true,
+                  message: "请先保存，才能导出",
+                  type: "error",
+                });
+              } else if (this.formTableData.tableData.length) {
+                downLoadFile(this.searchData);
+              } else {
+                this.$message({
+                  showClose: true,
+                  message: "暂无数据导出",
+                  type: "error",
+                });
+              }
+            } else {
+              this.$message({
+                showClose: true,
+                message: "请选择左侧节点查询后才能操作",
+                type: "error",
+              });
+            }
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

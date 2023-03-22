@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script
+      type="text/javascript"
+      src="../resources/babel/browser.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="../resources/babel-polyfill/dist/polyfill.js"
+    ></script>
+    <script src="../resources/vue/vue-2.5.17.js"></script>
+    <link
+      rel="stylesheet"
+      href="../resources/element-ui/lib/theme-chalk/index.css"
+    />
+    <script src="../resources/element-ui/lib/index.js"></script>
+    <script src="../resources/axios/dist/axios.js"></script>
+    <script src="../resources/highchart/highcharts.js"></script>
+    <script src="../resources/highchart/no-data.js"></script>
+    <script src="../resources/highchart/highcharts-more.js"></script>
+    <script src="../resources/highchart/exporting.js"></script>
+    <script src="../resources/highchart/offline-exporting.js"></script>
+    <script src="../resources/highchart/export-data.js"></script>
+    <script src="../resources/highchart/jquery-3.1.1.min.js"></script>
+
+    <script src="../resources/utils/helper.js"></script>
+    <script src="../resources/homeContent/api.js"></script>
+    <!-- css -->
+    <link rel="stylesheet" href="../resources/utils/index.css" />
+    <link rel="stylesheet" href="../resources/homeContent/index.css" />
+    <title>首页显示内容</title>
+    <script type="text/javascript">
+      var homeContentRoot = "";
+    </script>
+  </head>
+  <body>
+    <div id="mainApp" class="app-container">
+      <el-form :model="form" >
+        <el-form-item label="业务日期">
+          <el-date-picker
+            v-model="form.date"
+            type="date"
+            placeholder="选择日期"
+            size="mini"
+            value-format="yyyyMMdd"
+            :picker-options="pickerOptions"
+            :clearable="false"
+          >
+          </el-date-picker>
+        </el-form-item>
+      </el-form>
+      <div class="container">
+        <div class="content-item">
+          <div class="item-container">
+            <div class="pie-box">
+              <div id="pie1" class="pie" v-loading="fileLoading"></div>
+            </div>
+
+            <div class="title">文件接收异常表</div>
+            <div class="content-item-table">
+              <el-table
+                :data="fileExceptionList"
+                border
+                :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+                style="width: 100%"
+                class="table-box"
+                :row-style="{fontSize:'12px',}"
+                v-loading="fileLoading"
+                :height="height"
+              >
+                <el-table-column
+                  prop="orgName"
+                  label="机构"
+                  align="center"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="pfName"
+                  label="资产"
+                  align="center"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="des"
+                  label="描述"
+                  align="center"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </div>
+        <div class="content-item">
+          <div class="item-container">
+            <div class="pie-box">
+              <div id="pie2" class="pie" v-loading="mailLoading"></div>
+            </div>
+            <div class="title">虚拟净值邮件接收异常表</div>
+
+            <div class="content-item-table">
+              <el-table
+                :data="mailExceptionList"
+                border
+                :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+                style="width: 100%"
+                class="table-box"
+                :row-style="{fontSize:'12px',}"
+                v-loading="mailLoading"
+                :height="height"
+              >
+                <el-table-column
+                  prop="orgName"
+                  label="机构"
+                  align="center"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="pfName"
+                  label="资产"
+                  align="center"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="des"
+                  label="描述"
+                  align="center"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </div>
+        <div class="content-item">
+          <div class="item-container">
+            <div class="pie-box">
+              <div id="pie3" class="pie" v-loading="dataLoading"></div>
+            </div>
+            <div class="title">数据处理异常表</div>
+            <div class="content-item-table">
+              <el-table
+                :data="dataExceptionList"
+                border
+                :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+                style="width: 100%"
+                class="table-box"
+                :row-style="{fontSize:'12px',}"
+                v-loading="dataLoading"
+                :height="height"
+              >
+                <el-table-column
+                  prop="orgName"
+                  label="机构"
+                  align="center"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="pfName"
+                  label="资产"
+                  align="center"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="des"
+                  label="异常步骤"
+                  align="center"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="text/babel">
+      let homeContentVue = new Vue({
+        el: "#mainApp",
+        data() {
+          return {
+            form: {
+              date: formatDate(),
+            },
+            pickerOptions: {
+              disabledDate(time) {
+                return time.getTime() > Date.now();
+              },
+            },
+            fileLoading: false,
+            mailLoading: false,
+            dataLoading: false,
+            fileExceptionList: [],
+            mailExceptionList: [],
+            dataExceptionList: [],
+            height:0,
+          };
+        },
+        mounted() {
+          this.searchHandler();
+          this.height = document.getElementsByClassName("content-item-table")[0].offsetHeight;
+          Highcharts.setOptions({
+            lang: {
+              noData: "暂无数据",
+            },
+          });
+        },
+        watch: {
+          "form.date": {
+            handler(newVal, oldVal) {
+              if (!newVal) return;
+              console.log(11111, newVal);
+              this.searchHandler();
+            },
+            deep: true,
+          },
+        },
+        methods: {
+          searchHandler() {
+            const params = { date: this.form.date };
+            // 文件接收异常表
+            this.fileLoading = true;
+            getFileException(params)
+              .then((data) => {
+                if (data) {
+                  this.fileExceptionList = data.list;
+                  let echartsData = [];
+                  if (data.echarts) {
+                    echartsData = data.echarts.map((item) => ({
+                      name: item.code,
+                      y: Number(item.value),
+                    }));
+                  }
+                  var chart1 = Highcharts.chart(
+                    "pie1",
+                    {
+                      chart: {
+                        spacing: [30, 0, 30, 0],
+                        borderRadius: 5,
+                      },
+                      credits: {
+                        enabled: false,
+                      },
+                      title: {
+                        floating: true,
+                        // text: "圆心显示的标题",
+                        text: "",
+                      },
+                      tooltip: {
+                        headerFormat: "",
+                        // pointFormat: "{series.name}: <b>{point.percentage:.1f}%</b>",
+                        // pointFormat: "{point.name}:{point.y}",
+                        pointFormat:
+                          "{point.name}: <b>{point.percentage:.1f}%</b>",
+                      },
+                      exporting: { enabled: false },
+                      colors: ["#5470c6", "#91cc75", "#fac858"],
+                      plotOptions: {
+                        pie: {
+                          // allowPointSelect: true,
+                          cursor: "pointer",
+                          dataLabels: {
+                            enabled: false,
+                            // format: "<b>{point.name}</b>: {point.percentage:.1f} %",
+                            // style: {
+                            //   color:
+                            //     (Highcharts.theme &&
+                            //       Highcharts.theme.contrastTextColor) ||
+                            //     "black",
+                            // },
+                          },
+                          point: {
+                            events: {
+                              mouseOver: function (e) {
+                                // 鼠标滑过时动态更新标题
+                                // 标题更新函数，API 地址：https://api.hcharts.cn/highcharts#Chart.setTitle
+                                chart1.setTitle({
+                                  // text: e.target.name + "\t" + e.target.y + " %",
+                                  text: e.target.name,
+                                  style: {
+                                    fontWeight: "bold",
+                                  },
+                                });
+                              },
+                              mouseOut: function (e) {
+                                chart1.setTitle({
+                                  // text: e.target.name + "\t" + e.target.y + " %",
+                                  text: "",
+                                });
+                              },
+                              // select: function (e) {
+                              //   // 同样的可以在点击事件里处理
+                              //   // chart1.setTitle({
+                              //   //     text: e.point.name+ '\t'+ e.point.y + ' %'
+                              //   // });
+                              //   chart1.setTitle({
+                              //     // text: e.target.name + "\t" + e.target.y + " %",
+                              //     text: e.target.name,
+                              //     style: {
+                              //       fontWeight: "bold",
+                              //     },
+                              //   });
+                              // },
+                              // click: function(e) { // 同样的可以在点击事件里处理
+                              //     chart1.setTitle({
+                              //         text: e.point.name+ '\t'+ e.point.y + ' %'
+                              //     });
+                              // }
+                            },
+                          },
+                          showInLegend: true,
+                        },
+                      },
+                      legend: {
+                        align: "center",
+                        verticalAlign: "top",
+                        symbolHeight: 12,
+                        symbolWidth: 12,
+                        symbolRadius: 0,
+                      },
+                      series: [
+                        {
+                          type: "pie",
+                          innerSize: "55%",
+                          name: "份额",
+                          data: echartsData,
+                        },
+                      ],
+                    },
+                    function (c) {
+                      // 图表初始化完毕后的会掉函数
+                      // 环形图圆心
+                      var centerY = c.series[0].center[1],
+                        titleHeight = parseInt(c.title.styles.fontSize);
+                      // 动态设置标题位置
+                      console.log(c.series[0], centerY, c.legend);
+                      c.setTitle({
+                        y:
+                          centerY +
+                          titleHeight / 2 +
+                          c.legend.legendHeight +
+                          c.legend.symbolHeight,
+                      });
+                    }
+                  );
+                }
+                this.fileLoading = false;
+              })
+              .catch(() => {
+                this.fileLoading = false;
+                this.$message({
+                  showClose: true,
+                  message: "文件接收异常-接口出现异常",
+                  type: "error",
+                });
+              });
+
+            // 邮件接收异常
+            this.mailLoading = true;
+            getMailException(params)
+              .then((data) => {
+                if (data) {
+                  this.mailExceptionList = data.list;
+                  let echartsData = [];
+                  if (data.echarts) {
+                    echartsData = data.echarts.map((item) => ({
+                      name: item.code,
+                      y: Number(item.value),
+                    }));
+                  }
+                  var chart2 = Highcharts.chart(
+                    "pie2",
+                    {
+                      chart: {
+                        spacing: [30, 0, 30, 0],
+                        borderRadius: 5,
+                      },
+                      credits: {
+                        enabled: false,
+                      },
+                      title: {
+                        floating: true,
+                        // text: "圆心显示的标题",
+                        text: "",
+                      },
+                      tooltip: {
+                        headerFormat: "",
+                        // pointFormat: "{series.name}: <b>{point.percentage:.1f}%</b>",
+                        // pointFormat: "{point.name}:{point.y}",
+                        pointFormat:
+                          "{point.name}: <b>{point.percentage:.1f}%</b>",
+                      },
+                      exporting: { enabled: false },
+                      colors: ["#5470c6", "#91cc75", "#fac858"],
+                      plotOptions: {
+                        pie: {
+                          // allowPointSelect: true,
+                          cursor: "pointer",
+                          dataLabels: {
+                            enabled: false,
+                            // format: "<b>{point.name}</b>: {point.percentage:.1f} %",
+                            // style: {
+                            //   color:
+                            //     (Highcharts.theme &&
+                            //       Highcharts.theme.contrastTextColor) ||
+                            //     "black",
+                            // },
+                          },
+                          point: {
+                            events: {
+                              mouseOver: function (e) {
+                                // 鼠标滑过时动态更新标题
+                                // 标题更新函数，API 地址：https://api.hcharts.cn/highcharts#Chart.setTitle
+                                chart2.setTitle({
+                                  // text: e.target.name + "\t" + e.target.y + " %",
+                                  text: e.target.name,
+                                  style: {
+                                    fontWeight: "bold",
+                                  },
+                                });
+                              },
+
+                              // select: function (e) {
+                              //   // 同样的可以在点击事件里处理
+                              //   // chart.setTitle({
+                              //   //     text: e.point.name+ '\t'+ e.point.y + ' %'
+                              //   // });
+                              //   chart2.setTitle({
+                              //     // text: e.target.name + "\t" + e.target.y + " %",
+                              //     text: e.target.name,
+                              //     style: {
+                              //       fontWeight: "bold",
+                              //     },
+                              //   });
+                              // },
+                              mouseOut: function (e) {
+                                chart2.setTitle({
+                                  // text: e.target.name + "\t" + e.target.y + " %",
+                                  text: "",
+                                });
+                              },
+                              // click: function(e) { // 同样的可以在点击事件里处理
+                              //     chart2.setTitle({
+                              //         text: e.point.name+ '\t'+ e.point.y + ' %'
+                              //     });
+                              // }
+                            },
+                          },
+                          showInLegend: true,
+                        },
+                      },
+                      legend: {
+                        align: "center",
+                        verticalAlign: "top",
+                        symbolHeight: 12,
+                        symbolWidth: 12,
+                        symbolRadius: 0,
+                      },
+                      series: [
+                        {
+                          type: "pie",
+                          innerSize: "55%",
+                          name: "份额",
+                          data: echartsData,
+                        },
+                      ],
+                    },
+                    function (c) {
+                      // 图表初始化完毕后的会掉函数
+                      // 环形图圆心
+                      var centerY = c.series[0].center[1],
+                        titleHeight = parseInt(c.title.styles.fontSize);
+                      // 动态设置标题位置
+                      // console.log(centerY, titleHeight, c.legend.);
+                      c.setTitle({
+                        y:
+                          centerY +
+                          titleHeight / 2 +
+                          c.legend.legendHeight +
+                          c.legend.symbolHeight,
+                      });
+                    }
+                  );
+                }
+                this.mailLoading = false;
+              })
+              .catch(() => {
+                this.mailLoading = false;
+                this.$message({
+                  showClose: true,
+                  message: "邮件接收异常-接口出现异常",
+                  type: "error",
+                });
+              });
+
+            // 数据处理异常
+            this.dataLoading = true;
+            getDataException(params)
+              .then((data) => {
+                if (data) {
+                  this.dataExceptionList = data.list;
+                  let echartsData = [];
+                  if (data.echarts) {
+                    echartsData = data.echarts.map((item) => ({
+                      name: item.code,
+                      y: Number(item.value),
+                    }));
+                  }
+
+                  var chart3 = Highcharts.chart(
+                    "pie3",
+                    {
+                      chart: {
+                        spacing: [30, 0, 30, 0],
+                        borderRadius: 5,
+                      },
+                      credits: {
+                        enabled: false,
+                      },
+                      title: {
+                        floating: true,
+                        // text: "圆心显示的标题",
+                        text: "",
+                      },
+                      tooltip: {
+                        headerFormat: "",
+                        // pointFormat: "{series.name}: <b>{point.percentage:.1f}%</b>",
+                        // pointFormat: "{point.name}:{point.y}",
+                        pointFormat:
+                          "{point.name}: <b>{point.percentage:.1f}%</b>",
+                      },
+                      exporting: { enabled: false },
+                      colors: ["#5470c6", "#91cc75", "#fac858", "#F56C6C"],
+                      plotOptions: {
+                        pie: {
+                          // allowPointSelect: true,
+                          cursor: "pointer",
+                          dataLabels: {
+                            enabled: false,
+                            // format: "<b>{point.name}</b>: {point.percentage:.1f} %",
+                            // style: {
+                            //   color:
+                            //     (Highcharts.theme &&
+                            //       Highcharts.theme.contrastTextColor) ||
+                            //     "black",
+                            // },
+                          },
+                          point: {
+                            events: {
+                              mouseOver: function (e) {
+                                // 鼠标滑过时动态更新标题
+                                // 标题更新函数，API 地址：https://api.hcharts.cn/highcharts#Chart.setTitle
+                                chart3.setTitle({
+                                  // text: e.target.name + "\t" + e.target.y + " %",
+                                  text: e.target.name,
+                                  style: {
+                                    fontWeight: "bold",
+                                  },
+                                });
+                              },
+                              mouseOut: function (e) {
+                                chart3.setTitle({
+                                  // text: e.target.name + "\t" + e.target.y + " %",
+                                  text: "",
+                                });
+                              },
+                              // click: function (e) {
+                              //   // 同样的可以在点击事件里处理
+                              //   // chart.setTitle({
+                              //   //     text: e.point.name+ '\t'+ e.point.y + ' %'
+                              //   // });
+                              // },
+                              // select: function (e) {
+                              //   // 同样的可以在点击事件里处理
+                              //   // chart.setTitle({
+                              //   //     text: e.point.name+ '\t'+ e.point.y + ' %'
+                              //   // });
+                              //   chart3.setTitle({
+                              //     // text: e.target.name + "\t" + e.target.y + " %",
+                              //     text: e.target.name,
+                              //     style: {
+                              //       fontWeight: "bold",
+                              //     },
+                              //   });
+                              // },
+                            },
+                          },
+                          showInLegend: true,
+                        },
+                      },
+                      legend: {
+                        align: "center",
+                        verticalAlign: "top",
+                        symbolHeight: 12,
+                        symbolWidth: 12,
+                        symbolRadius: 0,
+                      },
+                      series: [
+                        {
+                          type: "pie",
+                          innerSize: "55%",
+                          name: "份额",
+                          data: echartsData,
+                        },
+                      ],
+                    },
+                    function (c) {
+                      // 图表初始化完毕后的会掉函数
+                      // 环形图圆心
+                      var centerY = c.series[0].center[1],
+                        titleHeight = parseInt(c.title.styles.fontSize);
+                      // 动态设置标题位置
+                      // console.log(centerY, titleHeight, c.legend.);
+                      c.setTitle({
+                        y:
+                          centerY +
+                          titleHeight / 2 +
+                          c.legend.legendHeight +
+                          c.legend.symbolHeight,
+                      });
+                    }
+                  );
+                }
+                this.dataLoading = false;
+              })
+              .catch(() => {
+                this.dataLoading = false;
+                this.$message({
+                  showClose: true,
+                  message: "数据处理异常-接口出现异常",
+                  type: "error",
+                });
+              });
+          },
+          initChart() {
+            var chart1 = Highcharts.chart(
+              "pie1",
+              {
+                chart: {
+                  spacing: [30, 0, 30, 0],
+                  borderRadius: 5,
+                },
+                credits: {
+                  enabled: false,
+                },
+                title: {
+                  floating: true,
+                  // text: "圆心显示的标题",
+                  text: "",
+                },
+                tooltip: {
+                  headerFormat: "",
+                  // pointFormat: "{series.name}: <b>{point.percentage:.1f}%</b>",
+                  // pointFormat: "{point.name}:{point.y}",
+                  pointFormat: "{point.name}: <b>{point.percentage:.1f}%</b>",
+                },
+                exporting: { enabled: false },
+                colors: ["#5470c6", "#91cc75", "#fac858"],
+                plotOptions: {
+                  pie: {
+                    // allowPointSelect: true,
+                    cursor: "pointer",
+                    dataLabels: {
+                      enabled: false,
+                      // format: "<b>{point.name}</b>: {point.percentage:.1f} %",
+                      // style: {
+                      //   color:
+                      //     (Highcharts.theme &&
+                      //       Highcharts.theme.contrastTextColor) ||
+                      //     "black",
+                      // },
+                    },
+                    point: {
+                      events: {
+                        mouseOver: function (e) {
+                          // 鼠标滑过时动态更新标题
+                          // 标题更新函数，API 地址：https://api.hcharts.cn/highcharts#Chart.setTitle
+                          chart1.setTitle({
+                            // text: e.target.name + "\t" + e.target.y + " %",
+                            text: e.target.name,
+                            style: {
+                              fontWeight: "bold",
+                            },
+                          });
+                        },
+                        mouseOut: function (e) {
+                          chart1.setTitle({
+                            // text: e.target.name + "\t" + e.target.y + " %",
+                            text: "",
+                          });
+                        },
+                        // select: function (e) {
+                        //   // 同样的可以在点击事件里处理
+                        //   // chart1.setTitle({
+                        //   //     text: e.point.name+ '\t'+ e.point.y + ' %'
+                        //   // });
+                        //   chart1.setTitle({
+                        //     // text: e.target.name + "\t" + e.target.y + " %",
+                        //     text: e.target.name,
+                        //     style: {
+                        //       fontWeight: "bold",
+                        //     },
+                        //   });
+                        // },
+                        // click: function(e) { // 同样的可以在点击事件里处理
+                        //     chart1.setTitle({
+                        //         text: e.point.name+ '\t'+ e.point.y + ' %'
+                        //     });
+                        // }
+                      },
+                    },
+                    showInLegend: true,
+                  },
+                },
+                legend: {
+                  align: "center",
+                  verticalAlign: "top",
+                  symbolHeight: 12,
+                  symbolWidth: 12,
+                  symbolRadius: 0,
+                },
+                series: [
+                  {
+                    type: "pie",
+                    innerSize: "55%",
+                    name: "份额",
+                    data: [
+                      {
+                        name: "已经收到估值文件",
+                        y: 90,
+                      },
+                      ["未收到估值文件", 20],
+                    ],
+                  },
+                ],
+              },
+              function (c) {
+                // 图表初始化完毕后的会掉函数
+                // 环形图圆心
+                var centerY = c.series[0].center[1],
+                  titleHeight = parseInt(c.title.styles.fontSize);
+                // 动态设置标题位置
+                console.log(c.series[0], centerY, c.legend);
+                c.setTitle({
+                  y:
+                    centerY +
+                    titleHeight / 2 +
+                    c.legend.legendHeight +
+                    c.legend.symbolHeight,
+                });
+              }
+            );
+            var chart2 = Highcharts.chart(
+              "pie2",
+              {
+                chart: {
+                  spacing: [30, 0, 30, 0],
+                  borderRadius: 5,
+                },
+                credits: {
+                  enabled: false,
+                },
+                title: {
+                  floating: true,
+                  // text: "圆心显示的标题",
+                  text: "",
+                },
+                tooltip: {
+                  headerFormat: "",
+                  // pointFormat: "{series.name}: <b>{point.percentage:.1f}%</b>",
+                  // pointFormat: "{point.name}:{point.y}",
+                  pointFormat: "{point.name}: <b>{point.percentage:.1f}%</b>",
+                },
+                exporting: { enabled: false },
+                colors: ["#5470c6", "#91cc75", "#fac858"],
+                plotOptions: {
+                  pie: {
+                    // allowPointSelect: true,
+                    cursor: "pointer",
+                    dataLabels: {
+                      enabled: false,
+                      // format: "<b>{point.name}</b>: {point.percentage:.1f} %",
+                      // style: {
+                      //   color:
+                      //     (Highcharts.theme &&
+                      //       Highcharts.theme.contrastTextColor) ||
+                      //     "black",
+                      // },
+                    },
+                    point: {
+                      events: {
+                        mouseOver: function (e) {
+                          // 鼠标滑过时动态更新标题
+                          // 标题更新函数，API 地址：https://api.hcharts.cn/highcharts#Chart.setTitle
+                          chart2.setTitle({
+                            // text: e.target.name + "\t" + e.target.y + " %",
+                            text: e.target.name,
+                            style: {
+                              fontWeight: "bold",
+                            },
+                          });
+                        },
+
+                        // select: function (e) {
+                        //   // 同样的可以在点击事件里处理
+                        //   // chart.setTitle({
+                        //   //     text: e.point.name+ '\t'+ e.point.y + ' %'
+                        //   // });
+                        //   chart2.setTitle({
+                        //     // text: e.target.name + "\t" + e.target.y + " %",
+                        //     text: e.target.name,
+                        //     style: {
+                        //       fontWeight: "bold",
+                        //     },
+                        //   });
+                        // },
+                        mouseOut: function (e) {
+                          chart2.setTitle({
+                            // text: e.target.name + "\t" + e.target.y + " %",
+                            text: "",
+                          });
+                        },
+                        // click: function(e) { // 同样的可以在点击事件里处理
+                        //     chart2.setTitle({
+                        //         text: e.point.name+ '\t'+ e.point.y + ' %'
+                        //     });
+                        // }
+                      },
+                    },
+                    showInLegend: true,
+                  },
+                },
+                legend: {
+                  align: "center",
+                  verticalAlign: "top",
+                  symbolHeight: 12,
+                  symbolWidth: 12,
+                  symbolRadius: 0,
+                },
+                series: [
+                  {
+                    type: "pie",
+                    innerSize: "55%",
+                    name: "份额",
+                    data: [
+                      {
+                        name: "机构虚拟净值接收成功",
+                        y: 90,
+                      },
+                      ["未收到机构文件", 20],
+                    ],
+                  },
+                ],
+              },
+              function (c) {
+                // 图表初始化完毕后的会掉函数
+                // 环形图圆心
+                var centerY = c.series[0].center[1],
+                  titleHeight = parseInt(c.title.styles.fontSize);
+                // 动态设置标题位置
+                // console.log(centerY, titleHeight, c.legend.);
+                c.setTitle({
+                  y:
+                    centerY +
+                    titleHeight / 2 +
+                    c.legend.legendHeight +
+                    c.legend.symbolHeight,
+                });
+              }
+            );
+
+            var chart3 = Highcharts.chart(
+              "pie3",
+              {
+                chart: {
+                  spacing: [30, 0, 30, 0],
+                  borderRadius: 5,
+                },
+                credits: {
+                  enabled: false,
+                },
+                title: {
+                  floating: true,
+                  // text: "圆心显示的标题",
+                  text: "",
+                },
+                tooltip: {
+                  headerFormat: "",
+                  // pointFormat: "{series.name}: <b>{point.percentage:.1f}%</b>",
+                  // pointFormat: "{point.name}:{point.y}",
+                  pointFormat: "{point.name}: <b>{point.percentage:.1f}%</b>",
+                },
+                exporting: { enabled: false },
+                colors: ["#5470c6", "#91cc75", "#fac858", "#F56C6C"],
+                plotOptions: {
+                  pie: {
+                    // allowPointSelect: true,
+                    cursor: "pointer",
+                    dataLabels: {
+                      enabled: false,
+                      // format: "<b>{point.name}</b>: {point.percentage:.1f} %",
+                      // style: {
+                      //   color:
+                      //     (Highcharts.theme &&
+                      //       Highcharts.theme.contrastTextColor) ||
+                      //     "black",
+                      // },
+                    },
+                    point: {
+                      events: {
+                        mouseOver: function (e) {
+                          // 鼠标滑过时动态更新标题
+                          // 标题更新函数，API 地址：https://api.hcharts.cn/highcharts#Chart.setTitle
+                          chart3.setTitle({
+                            // text: e.target.name + "\t" + e.target.y + " %",
+                            text: e.target.name,
+                            style: {
+                              fontWeight: "bold",
+                            },
+                          });
+                        },
+                        mouseOut: function (e) {
+                          chart3.setTitle({
+                            // text: e.target.name + "\t" + e.target.y + " %",
+                            text: "",
+                          });
+                        },
+                        // click: function (e) {
+                        //   // 同样的可以在点击事件里处理
+                        //   // chart.setTitle({
+                        //   //     text: e.point.name+ '\t'+ e.point.y + ' %'
+                        //   // });
+                        // },
+                        // select: function (e) {
+                        //   // 同样的可以在点击事件里处理
+                        //   // chart.setTitle({
+                        //   //     text: e.point.name+ '\t'+ e.point.y + ' %'
+                        //   // });
+                        //   chart3.setTitle({
+                        //     // text: e.target.name + "\t" + e.target.y + " %",
+                        //     text: e.target.name,
+                        //     style: {
+                        //       fontWeight: "bold",
+                        //     },
+                        //   });
+                        // },
+                      },
+                    },
+                    showInLegend: true,
+                  },
+                },
+                legend: {
+                  align: "center",
+                  verticalAlign: "top",
+                  symbolHeight: 12,
+                  symbolWidth: 12,
+                  symbolRadius: 0,
+                },
+                series: [
+                  {
+                    type: "pie",
+                    innerSize: "55%",
+                    name: "份额",
+                    data: [
+                      {
+                        name: "处理成功",
+                        y: 90,
+                      },
+                      ["处理中", 20],
+                      {
+                        name: "未处理",
+                        y: 25,
+                        // sliced: true,
+                        // selected: true,
+                        // url: "http://www.hcharts.cn",
+                      },
+                      ["处理异常", 30],
+                    ],
+                  },
+                ],
+              },
+              function (c) {
+                // 图表初始化完毕后的会掉函数
+                // 环形图圆心
+                var centerY = c.series[0].center[1],
+                  titleHeight = parseInt(c.title.styles.fontSize);
+                // 动态设置标题位置
+                // console.log(centerY, titleHeight, c.legend.);
+                c.setTitle({
+                  y:
+                    centerY +
+                    titleHeight / 2 +
+                    c.legend.legendHeight +
+                    c.legend.symbolHeight,
+                });
+              }
+            );
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

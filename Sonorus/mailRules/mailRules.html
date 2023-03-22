@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script type="text/javascript" src="../resources/babel/browser.min.js"></script>
+    <script type="text/javascript" src="../resources/babel-polyfill/dist/polyfill.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="../resources/vue/vue-2.5.17.js"></script>
+    <link rel="stylesheet" href="../resources/element-ui/lib/theme-chalk/index.css" />
+    <script src="../resources/element-ui/lib/index.js"></script>
+    <script src="../resources/axios/dist/axios.js"></script>
+    <script src="../resources/utils/helper.js"></script>
+    <script src="../resources/mailRules/api.js"></script>
+    <!-- css -->
+    <link rel="stylesheet" href="../resources/utils/index.css" />
+    <link rel="stylesheet" href="../resources/mailRules/index.css" />
+    <title>邮件规则</title>
+    <script>
+      var mdmRoot = '';
+    </script>
+  </head>
+
+  <body>
+    <div id="mainApp" style="display: none">
+      <el-form :model="queryParams" class="select-header" ref="ruleForm">
+        <el-row style="height: 80px">
+          <el-col :span="5" class="el-col-zidingyi">
+            <el-form-item prop="orgName" label="机构名称：" label-width="auto">
+              <el-input v-model="queryParams.orgName" size="mini" style="width: 220px"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5" class="el-col-zidingyi">
+            <el-form-item prop="parsingRules" label="机构类型：" label-width="auto">
+              <el-input v-model="queryParams.parsingRules" size="mini" style="width: 220px"></el-input>
+            </el-form-item>
+          </el-col>
+
+          <!-- <el-col :span="5" class="el-col-zidingyi">
+            <el-form-item prop="org" label="发送机构：" label-width="auto">
+              <el-select
+                v-model="queryParams.org"
+                placeholder="请选择"
+                size="mini"
+                style="width: 220px"
+                clearable
+              >
+                <el-option
+                  v-for="item in agencyOptionList"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                  :key="item.keyId"
+                >
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col> -->
+          <el-col :span="4" class="select-btn-box select-btn-box el-col-zidingyi">
+            <el-button type="primary" size="mini" @click="searchHandler">查询</el-button>
+            <el-button type="info" size="mini" @click="resetHandler">重置</el-button>
+            <el-button size="mini" @click="addDialogVisible = true">新增</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div class="table-content">
+        <el-table
+          :data="tableData"
+          height="80vh"
+          border
+          style="width: 100%"
+          :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+          size="mini"
+        >
+          <el-table-column type="index" label="序号" width="60" align="center"> </el-table-column>
+          <el-table-column label="操作" width="200" align="center">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="editBtnHandleClick(scope.row)">编辑</el-button>
+              <el-button @click="seeBtnHandleClick(scope.row)" type="text" size="small">查看</el-button>
+            </template>
+          </el-table-column>
+          <el-table-column prop="sender" label="发件人" align="center"> </el-table-column>
+          <el-table-column prop="orgName" label="机构名称" align="center"> </el-table-column>
+          <el-table-column prop="matchTitle" label="匹配标题" align="center"> </el-table-column>
+          <el-table-column prop="matchFile" label="匹配附件" align="center"> </el-table-column>
+          <el-table-column prop="parsingRules" label="解析规则" align="center"> </el-table-column>
+          <el-table-column label="操作" align="center">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="deleteHandleClick(scope.row)">删除</el-button>
+              <el-button type="text" size="small" @click="downLoadHandleClick(scope.row)">下载</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div class="pagination-box">
+          <el-pagination
+            background
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="page"
+            :page-sizes="[30, 500, 100, 200]"
+            :page-size="size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+          >
+          </el-pagination>
+        </div>
+      </div>
+
+      <!-- 新增 弹窗 -->
+      <el-dialog
+        title="新增"
+        :visible.sync="addDialogVisible"
+        width="25%"
+        @close="newlyAddedDialogCloseHandler"
+        :close-on-click-modal="false"
+      >
+        <el-form :model="newlyAdded" class="newly-added-module" ref="addForm">
+          <el-form-item prop="sender" label="发件人:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="newlyAdded.sender"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="orgName" label="机构名称:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="newlyAdded.orgName"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="matchTitle" label="匹配标题:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="newlyAdded.matchTitle"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="matchFile" label="匹配附件:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="newlyAdded.matchFile"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="parsingRules" label="解析规则:" label-width="100px" :rules="addRule" >
+            <el-input
+              v-model="newlyAdded.parsingRules"
+              size="mini"
+              style="width: 220px"
+              :disabled="true"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="选择文件:" label-width="100px" required>
+            <input type="file" ref="fileInput"  @change="fileInputChangeHandler" />
+          </el-form-item>
+        </el-form>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="addDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="addConfirmHandler">确 定</el-button>
+        </span>
+      </el-dialog>
+      <!-- 查看 弹窗  -->
+      <el-dialog
+        title="查看"
+        :visible.sync="viewDialogVisible"
+        width="25%"
+        @close="viewDialogCloseHandler"
+        :close-on-click-modal="false"
+      >
+        <el-form :model="seeViewRow" class="newly-added-module" :disabled="true">
+          <el-form-item prop="sender" label="发件人:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="seeViewRow.sender"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="orgName" label="机构名称:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.orgName"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="matchTitle" label="匹配标题:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.matchTitle"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="matchFile" label="匹配附件:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.matchFile"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="parsingRules" label="解析规则:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.parsingRules"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+        </el-form>
+      </el-dialog>
+      <!-- 编辑 弹窗 -->
+      <el-dialog
+        title="编辑"
+        :visible.sync="editDialogVisible"
+        width="25%"
+        @close="editDialogCloseHandler"
+        :close-on-click-modal="false"
+      >
+        <el-form :model="editRowData" class="newly-added-module" ref="editForm">
+          <el-form-item prop="sender" label="发件人:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="editRowData.sender"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="orgName" label="机构名称:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="editRowData.orgName"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="matchTitle" label="匹配标题:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="editRowData.matchTitle"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="matchFile" label="匹配附件:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="editRowData.matchFile"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item prop="parsingRules" label="解析规则:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="editRowData.parsingRules"
+              @change="getFile($event)"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+              :disabled="true"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="选择文件:" label-width="100px" required>
+            <input type="file" ref="fileInput2" @change="fileInput2ChangeHandler" />
+          </el-form-item>
+        </el-form>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="editDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="editConfirmHandler">确 定</el-button>
+        </span>
+      </el-dialog>
+      <!-- 删除 弹窗 -->
+      <el-dialog
+        title=""
+        :visible.sync="deleteDialogVisible"
+        width="300px"
+        center
+        :show-close="false"
+        :close-on-click-modal="false"
+      >
+        <span>确定要删除吗</span>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="deleteDialogCloseHandler('cancel')">取 消</el-button>
+          <el-button type="primary" @click="deleteDialogCloseHandler('confirm')">确 定</el-button>
+        </span>
+      </el-dialog>
+    </div>
+    <script type="text/babel">
+      let vue = new Vue({
+        el: '#mainApp',
+        data() {
+          return {
+            queryParams: {
+              orgName: '',
+              parsingRules: '',
+            },
+            tableData: [],
+            seeModuleDialogVisible: false,
+            // 分页
+            page: 1,
+            total: 0,
+            size: 30,
+            // 新增 弹窗
+            addDialogVisible: false,
+            newlyAdded: {
+              matchFile: '',
+              matchTitle: '',
+              orgName: '',
+              parsingRules: '',
+              sender: '',
+            },
+            addRule: {
+              required: true,
+              message: '此输入项为必输项!',
+              trigger: 'change',
+            },
+            // 查看
+            viewDialogVisible: false,
+            seeViewRow: {
+              matchFile: '',
+              matchTitle: '',
+              orgName: '',
+              parsingRules: '',
+              sender: '',
+            },
+            // 编辑
+            editDialogVisible: false,
+            editRowData: {},
+            // 删除
+            deleteDialogVisible: false,
+          };
+        },
+        created: function () {
+          document.getElementById('mainApp').style.display = 'block';
+        },
+        methods: {
+          searchHandler() {
+            const { parsingRules, orgName } = this.queryParams;
+            mainSearchHandler({
+              orgName,
+              parsingRules,
+              startPage: this.page,
+              pageSize: this.size,
+            }).then(({ data }) => {
+              const { records, totalCount } = data;
+
+              this.tableData = records;
+              this.total = totalCount;
+            });
+          },
+          resetHandler() {
+            this.queryParams = {
+              orgName: '',
+              parsingRules: '',
+            };
+          },
+          // 下载
+          downLoadHandleClick(row) {
+            downLoadFile(row.id, row.parsingRules);
+          },
+          //删除
+          deleteHandleClick(row) {
+            this.deleteDialogVisible = true;
+            this.id = row.id;
+          },
+          deleteDialogCloseHandler(type) {
+            if (type === 'confirm') {
+              deleteHandler({ id: this.id }).then((data) => {
+                if (data) {
+                  this.$message({
+                    showClose: true,
+                    message: '删除成功',
+                    type: 'success',
+                  });
+                  this.searchHandler();
+                } else {
+                  this.$message({
+                    showClose: true,
+                    message: '删除失败',
+                    type: 'error',
+                  });
+                }
+                this.deleteDialogVisible = false;
+                this.id = null;
+              });
+            } else {
+              this.deleteDialogVisible = false;
+              this.id = null;
+            }
+          },
+          //分页
+          handleSizeChange(val) {
+            this.size = val;
+            this.page = 1;
+            this.searchHandler();
+          },
+          handleCurrentChange(val) {
+            this.page = val;
+            this.searchHandler();
+          },
+          // 新增弹窗
+          // 关闭
+          addConfirmHandler() {
+            this.$refs['addForm'].validate((valid) => {
+              if (valid) {
+                let file = this.$refs.fileInput.files[0];
+                if (!file) {
+                  return this.$message({
+                    showClose: true,
+                    message: '未选择文件',
+                    type: 'error',
+                  });
+                }
+                addHandler({ ...this.newlyAdded, file }).then(({ data }) => {
+                  let type = data;
+                  if (type) {
+                    this.$message({
+                      showClose: true,
+                      message: '新增成功',
+                      type: 'success',
+                    });
+                    this.addDialogVisible = false;
+                    this.$refs.fileInput.value = null;
+                    this.searchHandler();
+                  } else {
+                    this.$message({
+                      showClose: true,
+                      message: '新增失败',
+                      type: 'error',
+                    });
+                  }
+                });
+              } else {
+                return false;
+              }
+            });
+          },
+          newlyAddedDialogCloseHandler() {
+            this.newlyAdded = {
+              matchFile: '',
+              matchTitle: '',
+              orgName: '',
+              parsingRules: '',
+              sender: '',
+            };
+            this.$refs.fileInput.value = null;
+            setTimeout(() => {
+              this.$refs['addForm'].clearValidate();
+            }, 10);
+          },
+          // 查看
+          seeBtnHandleClick(row) {
+            this.seeViewRow = row;
+            this.viewDialogVisible = true;
+          },
+          viewDialogCloseHandler() {
+            this.seeViewRow = {
+              matchFile: '',
+              matchTitle: '',
+              orgName: '',
+              parsingRules: '',
+              sender: '',
+            };
+          },
+          editBtnHandleClick(row) {
+            this.editDialogVisible = true;
+            this.editRowData = { ...row };
+          },
+          editDialogCloseHandler() {
+            this.$refs.fileInput2.value = null;
+            setTimeout(() => {
+              this.editRowData = {};
+              this.$refs['editForm'].clearValidate();
+            }, 10);
+          },
+          editConfirmHandler() {
+            this.$refs['editForm'].validate((valid) => {
+              if (valid) {
+                let file = this.$refs.fileInput2.files[0];
+                if(!file){
+                  file =null;
+                }
+                editHandler({ ...this.editRowData,file }).then(({ data }) => {
+                  let type = data;
+                  if (type) {
+                    this.$message({
+                      showClose: true,
+                      message: '编辑成功',
+                      type: 'success',
+                    });
+                    this.searchHandler();
+                  } else {
+                    this.$message({
+                      showClose: true,
+                      message: '编辑失败',
+                      type: 'error',
+                    });
+                  }
+                  this.editDialogVisible = false;
+                  this.$refs.fileInput2.value = null;
+                });
+              } else {
+                return false;
+              }
+            });
+          },
+          fileInputChangeHandler(e){
+            if(e.target.value) {
+             const fileNameArray = e.target.value.split('\\');
+             this.newlyAdded.parsingRules = fileNameArray.slice(-1)[0]
+            }
+          },
+          fileInput2ChangeHandler(e){
+            if(e.target.value) {
+             const fileNameArray = e.target.value.split('\\');
+             this.editRowData.parsingRules = fileNameArray.slice(-1)[0]
+            }
+          }
+        },
+        mounted: function () {
+          this.searchHandler();
+        },
+      });
+    </script>
+  </body>
+</html>

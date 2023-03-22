@@ -1,0 +1,19 @@
+#mainApp {
+    display: flex;
+    flex-direction: row;
+}
+.tree-content {
+    width: 300px;
+    height: 100%;
+    border-right: 1px solid #ccc;
+}
+.table-content {
+    overflow-x: auto;
+}
+.select-btn-box {
+  
+    float: right;
+}
+.select-header {
+    margin-bottom: 10px;
+}

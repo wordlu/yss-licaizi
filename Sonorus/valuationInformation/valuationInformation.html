@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script type="text/javascript" src="../resources/babel/browser.min.js"></script>
+    <script type="text/javascript" src="../resources/babel-polyfill/dist/polyfill.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="../resources/vue/vue-2.5.17.js"></script>
+    <link rel="stylesheet" href="../resources/element-ui/lib/theme-chalk/index.css" />
+    <script src="../resources/element-ui/lib/index.js"></script>
+    <script src="../resources/axios/dist/axios.js"></script>
+    <script src="../resources/utils/helper.js"></script>
+    <script src="../resources/valuationInformation/api.js"></script>
+    <!-- css -->
+    <link rel="stylesheet" href="../resources/utils/index.css" />
+    <link rel="stylesheet" href="../resources/valuationInformation/index.css" />
+    <title>信息估值查看</title>
+    <script>
+      var mdmRoot = '';
+    </script>
+  </head>
+
+  <body>
+    <div id="mainApp" style="display: none">
+      <div class="tree-content">
+        <el-select
+          v-model="treeId"
+          placeholder="请选择树"
+          size="mini"
+          style="width: 280px; margin: 5px 5px 15px 5px"
+          @change="selectTreeHanlder"
+        >
+          <el-option v-for="item in treeOptions" :key="item.code" :label="item.name" :value="item.code">
+          </el-option>
+        </el-select>
+        <el-input
+          style="width: 280px; margin: 0 5px"
+          size="mini"
+          placeholder="输入关键字进行过滤"
+          v-model="filterText"
+        >
+        </el-input>
+        <el-tree
+          :data="treeData"
+          show-checkbox
+          default-expand-all
+          node-key="assetCode"
+          ref="tree"
+          highlight-current
+          :props="defaultProps"
+          @check="treeCheckHandler"
+          :filter-node-method="filterNode"
+        >
+        </el-tree>
+      </div>
+      <div class="table-content">
+        <el-form :model="queryParams" class="select-header" ref="ruleForm">
+          <el-row style="height: 40px; margin-bottom: 5px">
+            <el-col :span="7" class="el-col-zidingyi">
+              <el-form-item prop="searchDate" label="起止日期：" label-width="auto">
+                <el-date-picker
+                  v-model="queryParams.searchDate"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                  value-format="yyyyMMdd"
+                  unlink-panels
+                  size="mini"
+                  style="width: 260px; font-size: 12px"
+                >
+                </el-date-picker>
+              </el-form-item>
+            </el-col>
+            <el-col :span="4" class="select-btn-box el-col-zidingyi">
+              <el-button type="primary" size="mini" @click="searchHandler">查询</el-button>
+              <el-button size="mini" @click="batchAuditClickHandler">批量审核</el-button>
+            </el-col>
+          </el-row>
+        </el-form>
+
+        <el-table
+          :data="tableData"
+          height="85vh"
+          border
+          ref="multipleTable"
+          style="width: 100%"
+          :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+          size="mini"
+        >
+          <el-table-column type="index" label="序号" width="65" align="center"> </el-table-column>
+          <el-table-column prop="fsetcode" label="套帐代码" align="left" width="150"> </el-table-column>
+          <el-table-column prop="fdate" label="业务日期" align="center" width="150"> </el-table-column>
+          <el-table-column prop="fyear" label="组合年份" align="center" width="150"> </el-table-column>
+          <el-table-column prop="fkmbm" label="科目编码" align="left" width="250"> </el-table-column>
+          <el-table-column prop="fkmmc" label="科目名称" align="left" width="250"> </el-table-column>
+          <el-table-column prop="fhqjg" label="行情价格" align="right" width="150"> </el-table-column>
+          <el-table-column prop="fhqbz" label="行情标志" align="center" width="150"> </el-table-column>
+          <el-table-column prop="fzqsl" label="证券数量" align="right" width="150"> </el-table-column>
+          <el-table-column prop="fzqcb" label="成本金额" align="right" width="150"> </el-table-column>
+          <el-table-column prop="fzqsz" label="市值金额" align="right" width="150"> </el-table-column>
+          <el-table-column prop="fgzZz" label="估值增值" align="right" width="150"> </el-table-column>
+          <el-table-column prop="fcbJzBl" label="成本占净值比" align="right" width="150"> </el-table-column>
+          <el-table-column prop="fszJzBl" label="市值占净值比" align="right" width="150"> </el-table-column>
+          <el-table-column prop="ftpxx" label="停牌信息" align="center" width="150"> </el-table-column>
+          <el-table-column prop="fqyxx" label="权益信息" align="center" width="150"> </el-table-column>
+          <el-table-column prop="fybal" label="原币金额" align="right" width="150"> </el-table-column>
+          <el-table-column prop="fcurcode" label="原币币种" align="center" width="150"> </el-table-column>
+          <el-table-column prop="fyslx" label="应收利息" align="center" width="150"> </el-table-column>
+          <el-table-column prop="etlTime" label="ETL时间" align="center" width="150"> </el-table-column>
+          <el-table-column prop="fjsfy" label="假设费用" align="right" width="150"> </el-table-column>
+          <el-table-column prop="fyqyj" label="预期税金" align="right" width="150"> </el-table-column>
+          <el-table-column prop="fdwcb" label="数据来源ID" align="center" width="150"> </el-table-column>
+          <el-table-column prop="sourcetype" label="数据来源" align="center" width="150"> </el-table-column>
+          <el-table-column prop="checkId" label="审核人" align="center" width="150"> </el-table-column>
+          <el-table-column prop="checkTime" label="审核时间" align="center" width="150"> </el-table-column>
+        </el-table>
+        <div class="pagination-box">
+          <el-pagination
+            background
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="page"
+            :page-sizes="[30, 500, 100, 200,1000]"
+            :page-size="size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+          >
+          </el-pagination>
+        </div>
+      </div>
+    </div>
+    <script type="text/babel">
+      let vue = new Vue({
+        el: '#mainApp',
+        watch: {
+          filterText(val) {
+            this.$refs.tree.filter(val);
+          },
+        },
+
+        data() {
+          return {
+            queryParams: {
+              searchDate: [],
+            },
+            //树
+            treeId: '',
+            treeOptions: [],
+            filterText: '',
+            treeData: [],
+            defaultProps: {
+              children: 'children',
+              label: 'name',
+            },
+            tableData: [],
+            // 分页
+            page: 1,
+            total: 0,
+            size: 1000,
+          };
+        },
+        created: function () {
+          document.getElementById('mainApp').style.display = 'flex';
+        },
+        methods: {
+          treeCheckHandler(checkedNodes, checkedKeys) {
+            this.treeKeys = this.$refs.tree.getCheckedKeys();
+          },
+          searchHandler() {
+            getValueRecordsHandler({
+              startDate: this.queryParams.searchDate[0],
+              endDate: this.queryParams.searchDate[1],
+              startPage: this.page,
+              pageSize: this.size,
+              pfIdList: this.treeKeys,
+            }).then(({ data }) => {
+              const { records, totalCount } = data;
+              this.total = totalCount;
+              this.tableData = records;
+            });
+          },
+          eCheckedClick(row, type) {
+            examineStateHandler([{ ...row, status: type }]).then(({ data }) => {
+              if (data) {
+                this.$message({
+                  showClose: true,
+                  message: type ? '审核成功' : '反审核成功',
+                  type: 'success',
+                });
+                this.searchHandler();
+              } else {
+                this.$message({
+                  showClose: true,
+                  message: type ? '审核失败' : '反审核失败',
+                  type: 'error',
+                });
+              }
+            });
+          },
+          //分页
+          handleSizeChange(val) {
+            this.size = val;
+            this.page = 1;
+            this.searchHandler();
+          },
+          handleCurrentChange(val) {
+            this.page = val;
+            this.searchHandler();
+          },
+          // 批量审核
+          batchAuditClickHandler() {
+            let batchAuditArr = this.tableData.map((item) => {
+              return {
+                id: item.id,
+                status: '1',
+              };
+            });
+            examineStateHandler(batchAuditArr).then(({ data }) => {
+              if (data) {
+                this.$message({
+                  showClose: true,
+                  message: '审核成功',
+                  type: 'success',
+                });
+                this.searchHandler();
+              } else {
+                this.$message({
+                  showClose: true,
+                  message: '审核失败',
+                  type: 'error',
+                });
+              }
+            });
+          },
+          filterNode(value, data) {
+            if (!value) return true;
+            return data.name.indexOf(value) !== -1;
+          },
+          selectTreeHanlder(v) {
+            this.filterText = '';
+            getTreeDataHandler({ id: this.treeId }).then(({ data }) => {
+              this.treeData = [data];
+            });
+          },
+        },
+        mounted: function () {
+          getTreeList({}).then((data) => {
+            this.treeOptions = data;
+            this.treeId = data[0].code;
+            this.selectTreeHanlder();
+          });
+        },
+      });
+    </script>
+  </body>
+</html>

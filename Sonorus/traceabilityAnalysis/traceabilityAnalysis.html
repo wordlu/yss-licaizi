@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script type="text/javascript" src="../resources/babel/browser.min.js"></script>
+    <script type="text/javascript" src="../resources/babel-polyfill/dist/polyfill.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="../resources/vue/vue-2.5.17.js"></script>
+    <link rel="stylesheet" href="../resources/element-ui/lib/theme-chalk/index.css" />
+    <script src="../resources/element-ui/lib/index.js"></script>
+    <script src="../resources/axios/dist/axios.js"></script>
+    <script src="../resources/utils/helper.js"></script>
+    <script src="../resources/traceabilityAnalysis/api.js"></script>
+    <!-- css -->
+    <link rel="stylesheet" href="../resources/utils/index.css" />
+    <link rel="stylesheet" href="../resources/traceabilityAnalysis/index.css" />
+    <title>溯源分析</title>
+    <script>
+      var mdmRoot = '';
+    </script>
+  </head>
+
+  <body>
+    <div id="mainApp" style="display: none">
+      <el-form :model="queryParams" class="select-header" ref="ruleForm">
+        <el-row style="height: 80px">
+          <el-col :span="4" class="el-col-zidingyi">
+            <el-form-item prop="state" label="开始日期：" label-width="auto">
+              <el-date-picker
+                v-model="queryParams.beginDate"
+                align="right"
+                type="date"
+                value-format="yyyyMMdd"
+                placeholder="选择日期"
+                :picker-options="pickerOptions"
+              >
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5" class="el-col-zidingyi">
+            <el-form-item prop="state" label="结束日期：" label-width="auto">
+              <el-date-picker
+                v-model="queryParams.endDate"
+                align="right"
+                type="date"
+                value-format="yyyyMMdd"
+                placeholder="选择日期"
+                :picker-options="pickerOptions"
+              >
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5" class="el-col-zidingyi">
+            <el-select v-model="queryParams.code" placeholder="请选择">
+              <el-option v-for="item in options" :key="item.keyId" :label="item.keyName" :value="item.keyId">
+              </el-option>
+            </el-select>
+            <span style="margin: 0 10px">:</span>
+            <el-input v-model="queryParams.value" placeholder="请输入内容"></el-input>
+          </el-col>
+          <el-col :span="4" class="select-btn-box el-col-zidingyi">
+            <el-button type="primary" size="mini" @click="searchHandler">查询</el-button>
+            <el-button size="mini" @click="resetHandler">重置</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div class="table-content">
+        <div class="table-title-show">
+          <div class="marked-title marked-grey">未处理</div>
+          <div class="marked-title marked-green">已解析</div>
+          <div class="marked-title marked-bright">已入仓</div>
+          <div class="marked-title marked-red">异常</div>
+        </div>
+        <el-table
+          :data="tableData"
+          height="43vh"
+          ref="mainTable"
+          border
+          style="width: 100%"
+          :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+          size="mini"
+          v-loading="mainTableLoading"
+        >
+          <el-table-column prop="pfName" label="组合名字" align="center" width="150"> </el-table-column>
+          <el-table-column
+            v-for="item in monthArr"
+            :prop="item.dayProp"
+            :label="item.dayProp"
+            :key="item.dayProp"
+            width="100"
+            align="center"
+          >
+            <template slot-scope="scope">
+              <div v-if="scope.row[item.dayProp] =='1'" class="marked marked-grey"></div>
+              <div v-if="scope.row[item.dayProp] =='2'" class="marked marked-green"></div>
+              <div v-if="scope.row[item.dayProp] =='3'" class="marked marked-bright"></div>
+              <div
+                v-if="scope.row[item.dayProp] =='0'"
+                class="marked marked-red"
+                @click="tableCellClickHandler(scope.row,item.dayProp)"
+              ></div>
+              <div v-if="scope.row[item.dayProp] == null" class="marked"></div>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div class="pagination-box" style="justify-content: space-between">
+          <div
+            style="
+              line-height: 32px;
+              font-size: 14px;
+              font-weight: bold;
+              margin-left: 10px;
+              transform: translateY(5px);
+            "
+          >
+            {{detailTitle}} - {{pageBizDate}} 数据处理状态
+          </div>
+          <el-pagination
+            background
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="page"
+            :page-sizes="[30, 500, 100, 200]"
+            :page-size="size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+          >
+          </el-pagination>
+        </div>
+        <div style="display: flex">
+          <el-table
+            :data="detailsTableData2"
+            height="30vh"
+            border
+            style="width: 40%; margin: 10px 5px 0 0"
+            :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+            size="mini"
+            v-loading="detailTableLoading"
+          >
+            <el-table-column prop="processNm" label="流程步骤 " align="center"> </el-table-column>
+            <el-table-column prop="bizDate" label="业务日期" align="center"> </el-table-column>
+            <el-table-column prop="state" label="处理状态" align="center"> </el-table-column>
+          </el-table>
+          <el-table
+            :data="detailsTableData"
+            height="30vh"
+            border
+            style="width: 40%; margin: 10px 0 0 5px"
+            :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+            size="mini"
+            v-loading="detailTableLoading"
+          >
+            <el-table-column
+              prop="checkName"
+              label="校验项"
+              width="200"
+              align="center"
+              :show-overflow-tooltip="true"
+            >
+            </el-table-column>
+            <el-table-column
+              prop="bizDate"
+              label="业务日期"
+              width="200"
+              align="center"
+              :show-overflow-tooltip="true"
+            >
+            </el-table-column>
+            <el-table-column
+              prop="state"
+              label="状态"
+              width="100"
+              align="center"
+              :show-overflow-tooltip="true"
+            >
+            </el-table-column>
+            <el-table-column prop="remarks" label="信息描述" align="center" :show-overflow-tooltip="true">
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+    </div>
+    <script type="text/babel">
+      let vue = new Vue({
+        el: '#mainApp',
+        data() {
+          return {
+            queryParams: {
+              beginDate: '',
+              endDate: '',
+              code: '',
+              value: '',
+            },
+            tableData: [],
+            monthArr: [],
+            //详情 表格信息
+            pageBizDate: '',
+            detailsTableData: [],
+            detailsTableData2: [],
+            // 分页
+            page: 1,
+            total: 0,
+            size: 30,
+            detailTitle: '',
+            pickerOptions: {
+              disabledDate(time) {
+                return time.getTime() > Date.now();
+              },
+              shortcuts: [
+                {
+                  text: '今天',
+                  onClick(picker) {
+                    picker.$emit('pick', new Date());
+                  },
+                },
+                {
+                  text: '昨天',
+                  onClick(picker) {
+                    const date = new Date();
+                    date.setTime(date.getTime() - 3600 * 1000 * 24);
+                    picker.$emit('pick', date);
+                  },
+                },
+                {
+                  text: '一周前',
+                  onClick(picker) {
+                    const date = new Date();
+                    date.setTime(date.getTime() - 3600 * 1000 * 24 * 7);
+                    picker.$emit('pick', date);
+                  },
+                },
+                {
+                  text: '一个月前',
+                  onClick(picker) {
+                    const date = new Date();
+                    date.setTime(date.getTime() - 3600 * 1000 * 24 * 30);
+                    picker.$emit('pick', date);
+                  },
+                },
+                {
+                  text: '三个月前',
+                  onClick(picker) {
+                    const date = new Date();
+                    date.setTime(date.getTime() - 3600 * 1000 * 24 * 90);
+                    picker.$emit('pick', date);
+                  },
+                },
+              ],
+            },
+            options: [],
+            mainTableLoading: false,
+            detailTableLoading: false,
+          };
+        },
+        created: function () {
+          document.getElementById('mainApp').style.display = 'block';
+        },
+        methods: {
+          searchHandler() {
+            if (this.dateVerificationHandler() || this.mainTableLoading) return;
+            this.mainTableLoading = true;
+            getMainDataHandler({
+              beginDate: this.queryParams.beginDate,
+              endDate: this.queryParams.endDate,
+              value: this.queryParams.value,
+              code: this.queryParams.code,
+              rowCount: this.size,
+              startRow: this.page,
+            }).then(({ data, total, day }) => {
+              this.total = total;
+              this.tableData = data;
+              this.monthArr = day.reduce((prev, item) => {
+                if (item === 'pfName' || item === 'pfId') return prev;
+                prev.push({
+                  dayProp: item,
+                });
+                return prev;
+              }, []);
+              this.$nextTick(() => {
+                this.$refs.mainTable.doLayout();
+              });
+              this.mainTableLoading = false;
+            });
+          },
+          resetHandler() {
+            this.queryParams = {
+              beginDate: '',
+              endDate: '',
+              code: '',
+              value: '',
+            };
+          },
+          dateVerificationHandler() {
+            let startDt = this.queryParams.beginDate;
+            let endDt = this.queryParams.endDate;
+            if (!endDt || !startDt) {
+              this.$message({
+                showClose: true,
+                message: '请选择日期',
+                type: 'error',
+              });
+              return true;
+            }
+            if (endDt < startDt) {
+              this.$message({
+                showClose: true,
+                message: '开始日期 不能大于 结束日期',
+                type: 'error',
+              });
+              return true;
+            }
+            var startDate = new Date(
+              startDt.slice(0, 4) + '-' + startDt.slice(4, 6) + '-' + startDt.slice(6, 8)
+            );
+            var endDate = new Date(endDt.slice(0, 4) + '-' + endDt.slice(4, 6) + '-' + endDt.slice(6, 8));
+            var days = (endDate - startDate) / (1 * 24 * 60 * 60 * 1000);
+            if (days > 60) {
+              this.$message({
+                showClose: true,
+                message: '日期间隔不能超过60天',
+                type: 'error',
+              });
+              return true;
+            }
+            return false;
+          },
+          getMonthDay(year, month) {
+            let days = new Date(year, month, 0).getDate();
+            return days;
+          },
+          tableCellClickHandler(row, day) {
+            if(this.detailTableLoading)return;
+            this.detailTableLoading = true
+            this.detailTitle = row.pfName;
+            this.pageBizDate = day;
+            getSecondaryDataHandler({ pfId: row.pfId, bizDate: day }).then((data) => {
+              this.detailsTableData = data;
+              this.detailTableLoading = false;
+            });
+            getSecondary2DataHandler({ pfId: row.pfId, bizDate: day }).then((data) => {
+              this.detailsTableData2 = data;
+              this.detailTableLoading = false;
+            });
+          },
+          pinjindate(day) {
+            let str = String(day);
+            if (str.length === 1) {
+              return '0' + str;
+            } else {
+              return str;
+            }
+          },
+          //分页
+          handleSizeChange(val) {
+            this.size = val;
+            this.page = 1;
+            this.searchHandler();
+          },
+          handleCurrentChange(val) {
+            this.page = val;
+            this.searchHandler();
+          },
+          nowDay() {
+            let myDate = new Date();
+            let tYear = myDate.getFullYear();
+            let tMonth = myDate.getMonth() + 1;
+            return String(tYear) + this.pinjindate(tMonth);
+          },
+        },
+        mounted: function () {
+          // this.searchHandler();
+          getSelectOpation({}).then((data) => {
+            this.options = data;
+          });
+        },
+      });
+    </script>
+  </body>
+</html>

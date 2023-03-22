@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script
+      type="text/javascript"
+      src="../resources/babel/browser.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="../resources/babel-polyfill/dist/polyfill.js"
+    ></script>
+    <script src="../resources/vue/vue-2.5.17.js"></script>
+    <link
+      rel="stylesheet"
+      href="../resources/element-ui/lib/theme-chalk/index.css"
+    />
+    <script src="../resources/element-ui/lib/index.js"></script>
+    <script src="../resources/axios/dist/axios.js"></script>
+
+    <script src="../resources/utils/helper.js"></script>
+    <script src="../resources/newStrategicAccount/api.js"></script>
+    <!-- css -->
+    <link rel="stylesheet" href="../resources/utils/index.css" />
+    <link rel="stylesheet" href="../resources/newStrategicAccount/index.css" />
+    <title>策略专户信息维护</title>
+    <script type="text/javascript">
+      var newStrategicAccountRoot = "";
+    </script>
+  </head>
+  <body>
+    <div id="mainApp">
+      <el-form ref="searchForm" :model="formInline" class="select-header">
+        <!-- <el-row style="height: 60px" class="search-row-box"> -->
+        <el-row style="height: 60px" :gutter="20">
+          <el-col :span="4" class="el-col-zidingyi">
+            <!-- <el-col  class="el-col-zidingyi search-col"> -->
+            <el-form-item label="组合内码 :" prop="pfId">
+              <el-input
+                v-model="formInline.pfId"
+                placeholder="组合内码"
+                size="mini"
+                style="width: 100%"
+              ></el-input>
+            </el-form-item>
+          </el-col>
+          <!-- <el-col class="el-col-zidingyi search-col"> -->
+          <el-col :span="4" class="el-col-zidingyi">
+            <el-form-item label="组合名称 :" prop="pfName">
+              <el-input
+                v-model="formInline.pfName"
+                placeholder="组合名称"
+                size="mini"
+                style="width: 100%"
+              ></el-input>
+            </el-form-item>
+          </el-col>
+          <!-- <el-col  class="el-col-zidingyi search-col"> -->
+          <el-col :span="4" class="el-col-zidingyi">
+            <el-form-item label="投资管理人 :" prop="mngrId">
+              <el-select
+                filterable
+                v-model="formInline.mngrId"
+                placeholder="投资管理人"
+                size="mini"
+                clearable
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in orgList"
+                  :key="item.keyId"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <!-- <el-col  class="el-col-zidingyi search-col"> -->
+          <el-col :span="4" class="el-col-zidingyi">
+            <el-form-item label="资产类型 :" prop="assetType">
+              <el-select
+                v-model="formInline.assetType"
+                placeholder="资产类型"
+                size="mini"
+                clearable
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in assetTypeList"
+                  :key="item.keyId"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="4" class="el-col-zidingyi search-col">
+            <el-form-item label="审核状态 :" prop="cChecked" label-width="auto">
+              <el-select
+                v-model="formInline.cChecked"
+                size="mini"
+                placeholder="审核状态"
+                clearable
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in cChecked"
+                  :key="item.keyId"
+                  :value="item.keyId"
+                  :label="item.keyName"
+                >
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <!-- <el-col :span="7" class="select-btn-box el-col-zidingyi">
+            <el-form-item>
+              <el-button type="primary" size="mini" @click="searchFilter"
+                >查询</el-button
+              >
+              <el-button type="info" size="mini" @click="resetHandler"
+                >重置</el-button
+              >
+              <el-button size="mini" @click="add">新增</el-button>
+              <el-button type="primary" size="mini" @click="exportExcel"
+                >导出</el-button
+              >
+            </el-form-item>
+          </el-col> -->
+        </el-row>
+        <div class="btn-box">
+          <el-button type="primary" size="mini" @click="searchFilter"
+            >查询</el-button
+          >
+          <el-button type="info" size="mini" @click="resetHandler"
+            >重置</el-button
+          >
+          <el-button size="mini" @click="add">新增</el-button>
+          <el-button type="primary" size="mini" @click="exportExcel"
+            >导出</el-button
+          >
+        </div>
+      </el-form>
+      <div class="table-content">
+        <el-table
+          :data="tableData"
+          border
+          :row-style="{fontSize:'12px'}"
+          :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+          style="width: 100%"
+          :height="tableHeight"
+          v-loading="loading"
+          class="table-box"
+        >
+          <el-table-column type="index" label="序号" width="60" align="center">
+          </el-table-column>
+          <el-table-column label="操作" width="130" align="center">
+            <template slot-scope="{row,$index}">
+              <el-button
+                @click.native.prevent="editRow(row)"
+                v-show="!row.cChecked"
+                type="text"
+                size="small"
+              >
+                编辑
+              </el-button>
+              <el-button
+                @click.native.prevent="lookRow(row)"
+                type="text"
+                size="small"
+              >
+                查看
+              </el-button>
+              <el-button
+                @click.native.prevent="handleStatus(row)"
+                type="text"
+                size="small"
+              >
+                {{row.cChecked?"反审核":"审核"}}
+              </el-button>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="pfId"
+            label="组合内码"
+            width="130"
+            align="center"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="pfName"
+            label="组合名称"
+            width="150"
+            align="center"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="chgDate"
+            label="组合成立日期"
+            align="center"
+            width="130"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="endDate"
+            label="组合截止日期"
+            width="130"
+            align="center"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="mngrId"
+            label="投资管理人"
+            align="center"
+            width="180"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="assetType"
+            label="资产类型"
+            width="130"
+            align="center"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="marketCode"
+            label="市场代码"
+            width="130"
+            align="center"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="createPrsn"
+            label="创建人"
+            width="100"
+            align="center"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+          <el-table-column
+            prop="checkName"
+            label="审核人"
+            align="center"
+            width="100"
+            show-overflow-tooltip
+          >
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <el-pagination
+        class="pagination"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="page"
+        :page-sizes="[100,300,500]"
+        :page-size="size"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+      >
+      </el-pagination>
+
+      <el-dialog
+        v-if="visible"
+        :title="title"
+        :visible.sync="visible"
+        width="80%"
+        custom-class="dialog"
+        :before-close="handleClose"
+        :close-on-press-escape="false"
+        :close-on-click-modal="false"
+      >
+        <div class="form-content">
+          <el-form
+            ref="form"
+            :model="currentData"
+            class="form-box"
+            :disabled="!!currentData.disabled"
+            :inline="true"
+          >
+            <el-form-item
+              label="组合名称 :"
+              prop="pfName"
+              label-width="190px"
+              :rules="getRules"
+            >
+              <el-input
+                v-model="currentData.pfName"
+                placeholder="组合名称"
+                size="mini"
+                style="width: 180px"
+              ></el-input>
+            </el-form-item>
+            <el-form-item
+              label="组合代码 :"
+              prop="pfId"
+              label-width="190px"
+              :rules="getRules"
+            >
+              <el-input
+                v-model="currentData.pfId"
+                placeholder="组合代码 :"
+                size="mini"
+                style="width: 180px"
+                maxlength="50"
+              show-word-limit
+              ></el-input>
+            </el-form-item>
+            <el-form-item
+              label="管理人 :"
+              prop="mngrId"
+              label-width="190px"
+              :rules="getRules"
+            >
+              <el-select
+                filterable
+                v-model="currentData.mngrId"
+                placeholder="管理人"
+                size="mini"
+                style="width: 180px"
+              >
+                <el-option
+                  v-for="item in orgList"
+                  :key="item.keyId"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item
+              label="托管人 :"
+              prop="trustmngrId"
+              label-width="190px"
+              :rules="getRules"
+            >
+              <el-select
+                filterable
+                v-model="currentData.trustmngrId"
+                placeholder="托管人"
+                size="mini"
+                style="width: 180px"
+              >
+                <el-option
+                  v-for="item in trustmngrList"
+                  :key="item.keyId"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item
+              label="估值日 :"
+              prop="valueDate"
+              label-width="190px"
+              :rules="getRules"
+            >
+              <el-select
+                v-model="currentData.valueDate"
+                placeholder="估值日"
+                size="mini"
+                style="width: 180px"
+              >
+                <el-option
+                  v-for="item in dayList"
+                  :key="item.keyId"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+            <!-- <el-form-item
+              label="委托人 :"
+              prop="trustId"
+              label-width="190px"
+              :rules="getRules"
+            >
+              <el-select
+                v-model="currentData.trustId"
+                placeholder="委托人"
+                size="mini"
+                style="width: 180px"
+              >
+                <el-option
+                  v-for="item in personList"
+                  :key="item.keyId"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                ></el-option>
+              </el-select> </el-form-item
+            > -->
+            <el-form-item
+              label="资产类型 :"
+              prop="assetType"
+              label-width="190px"
+            >
+              <el-select
+                v-model="currentData.assetType"
+                placeholder="资产类型"
+                size="mini"
+                style="width: 180px"
+              >
+                <el-option
+                  v-for="item in assetTypeList"
+                  :key="item.keyId"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item
+              label="组合成立日 :"
+              prop="chgDate"
+              label-width="190px"
+            >
+              <el-date-picker
+                v-model="currentData.chgDate"
+                size="mini"
+                type="date"
+                placeholder="选择日期"
+                value-format="yyyyMMdd"
+                style="width: 180px"
+              >
+              </el-date-picker>
+            </el-form-item>
+            <el-form-item label="截止日 :" prop="endDate" label-width="190px">
+              <el-date-picker
+                v-model="currentData.endDate"
+                size="mini"
+                type="date"
+                placeholder="选择日期"
+                value-format="yyyyMMdd"
+                style="width: 180px"
+              >
+              </el-date-picker>
+            </el-form-item>
+            <el-form-item
+              label="投资经理 :"
+              prop="investMgr"
+              label-width="190px"
+            >
+              <el-select
+                size="mini"
+                v-model="currentData.investMgr"
+                placeholder="投资经理"
+                style="width: 180px"
+              >
+                <el-option
+                  v-for="item in investMgrList"
+                  :key="item.keyId"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                >
+                </el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item
+              label="投资部门 :"
+              prop="investDep"
+              label-width="190px"
+            >
+              <el-input
+                v-model="currentData.investDepName"
+                :disabled="true"
+                size="mini"
+                style="width: 180px"
+              ></el-input>
+            </el-form-item>
+            <!-- <el-form-item
+              label="所属投资经理关联部门 :"
+              prop="depId"
+              label-width="190px"
+            >
+              <el-input
+                v-model="currentData.depId"
+                placeholder="所属投资经理关联部门"
+                size="mini"
+                style="width: 180px"
+              ></el-input> </el-form-item
+            > -->
+            <el-form-item
+              label="投资计划是主动投资/被动投资 :"
+              prop="investWay"
+              label-width="190px"
+            >
+              <el-select
+                v-model="currentData.investWay"
+                placeholder="投资计划是主动投资/被动投资"
+                size="mini"
+                style="width: 180px"
+              >
+                <el-option
+                  v-for="item in wayList"
+                  :key="item.keyId"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="投顾机构 :" prop="orgId" label-width="190px">
+              <el-select
+                v-model="currentData.orgId"
+                placeholder="投顾机构"
+                size="mini"
+                style="width: 180px"
+              >
+                <el-option
+                  v-for="item in tgorgList"
+                  :key="item.keyId"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item
+              label="市场代码  :"
+              prop="marketCode"
+              label-width="190px"
+            >
+              <el-input
+                v-model="currentData.marketCode"
+                placeholder="市场代码"
+                size="mini"
+                style="width: 180px"
+                maxlength="50"
+              show-word-limit
+              ></el-input>
+            </el-form-item>
+          </el-form>
+          <div style="padding-left: 20px">
+            <h3>组合扩展信息</h3>
+            <div v-show="!currentData.disabled">
+              <el-button size="mini" @click="formAdd">新增</el-button>
+              <el-button size="mini" type="danger" @click="formDelete"
+                >删除</el-button
+              >
+            </div>
+            <el-form
+              :model="currentData"
+              class="form-table-box"
+              ref="formTable"
+              style="margin-top: 10px"
+              :disabled="currentData.disabled"
+            >
+              <el-table
+                :data="currentData.infoExts"
+                border
+                :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+                @selection-change="handleSelectionChange"
+                @select-all="handleAllSelect"
+                class="table-box"
+              >
+                <el-table-column
+                  v-show="!currentData.disabled"
+                  type="selection"
+                  width="55"
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="extField"
+                  label="扩展属性"
+                  align="center"
+                >
+                  <template slot-scope="{row,$index}">
+                    <el-form-item :prop="'infoExts.'+$index+'.extField'">
+                      <el-select
+                        v-model="row.extField"
+                        size="mini"
+                        placeholder="扩展属性"
+                      >
+                        <el-option
+                          v-for="item in extList"
+                          :key="item.keyId"
+                          :label="item.keyName"
+                          :value="item.keyId"
+                        >
+                        </el-option>
+                      </el-select>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  prop="extFieldValue"
+                  label="扩展值"
+                  align="center"
+              
+                >
+                  <template slot-scope="{row,$index}">
+                    <el-form-item :prop="'infoExts.'+$index+'.extFieldValue'">
+                      <el-input
+                        v-model="row.extFieldValue"
+                        placeholder="扩展值"
+                        size="mini"
+                        maxlength="50"
+                        show-word-limit
+                      >
+                      </el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  prop="extFieldNote"
+                  label="值域"
+                  align="center"
+                
+                >
+                  <template slot-scope="{row,$index}">
+                    <el-form-item :prop="'infoExts.'+$index+'.extFieldNote'">
+                      <el-input
+                        v-model="row.extFieldNote"
+                        placeholder="值域"
+                        size="mini"
+                        maxlength="200"
+                        show-word-limit
+                      >
+                      </el-input>
+                    </el-form-item>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-form>
+          </div>
+        </div>
+        <span
+          v-show="!currentData.disabled"
+          slot="footer"
+          class="dialog-footer"
+        >
+          <el-button size="mini" @click="reset">重置</el-button>
+          <el-button size="mini" type="primary" @click="submit">保存</el-button>
+        </span>
+      </el-dialog>
+    </div>
+    <script type="text/babel">
+      let newStrategicAccountVue = new Vue({
+        el: "#mainApp",
+        data() {
+          return {
+            formInline: {
+              pfId: "",
+              pfName: "",
+              mngrId: "",
+              assetType: "",
+              marketCode: "",
+              cChecked: "",
+            },
+            // 投资管理人
+            orgList: null,
+            // 托管人
+            trustmngrList: null,
+            // 估值日
+            dayList: null,
+            // 委托人
+            //personList: null,
+            // 资管是主动投资/被动投资
+            wayList: null,
+            // 投顾机构
+            tgorgList: null,
+            // 审核状态
+            cChecked: null,
+            // 组合扩展属性
+            extList: null,
+            // 资产类型
+            assetTypeList: null,
+            // 表格数据
+            tableData: [
+              // {
+              //   id: 1,
+              //   cChecked: 1, // cChecked 0可操作 1不可操作
+              //   pfId: "111", // 组合内码
+              //   pfName: "名称1", // 组合名称
+              //   chgDate: "20220102", // 组合成立日期
+              //   endDate: "20280202", // 组合截止日期
+              //   mngrId: "AAA", //投资管理人
+              //   createPrsn: "zs", // 创建人
+              //   checkName: "zs", // 审核人
+              //   trustmngrId: "AAA", // 托管人
+              //   valueDate: "2022", // 估值日
+              //   trustId: "0000", // 委托人代码
+              //   depId: "部门1", // 所属投资经理关联部门
+              //   investWay: "主动", // 资管计划是主动投资/被动投资
+              //   orgId: "机构1", // 投顾机构
+              //   infoExts: [
+              //     {
+              //       id: 1,
+              //       extField: "扩展属性1", // 扩展属性
+              //       extFieldValue: "1", // 扩展值
+              //       extFieldNote: "2", // 值域
+              //     },
+              //   ],
+              // },
+            ],
+            currentData: {},
+            resetData: {},
+            visible: false,
+            height: null,
+            tableHeight: null,
+            page: 1,
+            size: 100,
+            total: 0,
+            title: null,
+            infoExtsCheckBoxData: [],
+            loading: false,
+            rules: {
+              required: true,
+              message: "此输入项为必填项！",
+              trigger: "change",
+            },
+            investMgrList: [],
+          };
+        },
+        mounted() {
+          // this.height =
+          //   document.getElementById("mainApp").offsetHeight -
+          //   document.getElementsByClassName("select-header")[0].offsetHeight -
+          //   document.getElementsByClassName("pagination")[0].offsetHeight -
+          //   5;
+          // this.tableHeight = this.height - 10;
+          this.tableHeight =
+            document.getElementsByClassName("table-content")[0].offsetHeight;
+          this.getSelectData();
+          this.org();
+          this.trustmngr();
+          this.getInvestMgrList();
+          this.getOrgList();
+          this.getcChecked();
+          this.searchFilter()
+        },
+        computed: {
+          getRules() {
+            return this.title === "查看" ? {} : this.rules;
+          },
+        },
+        watch: {
+          page(newVal) {
+            this.searchFilter();
+          },
+          size(newVal) {
+            this.searchFilter();
+          },
+          visible(newVal) {
+            if (!newVal) {
+              this.currentData = {};
+              this.resetData = {};
+              this.infoExtsCheckBoxData = [];
+            }
+          },
+          "currentData.investMgr": {
+            handler(newVal, oldVal) {
+              if (!newVal) return;
+              const data = this.investMgrList.filter(
+                (item) => item.keyId === newVal
+              );
+              if (data.length) {
+                this.currentData.investDepName = data[0].depName;
+                this.currentData.investDep = data[0].depId;
+              }
+            },
+            deep: true,
+          },
+        },
+        methods: {
+          // 获取下拉内容
+          getSelectData() {
+            const params = {
+              classIds: [
+                "TG_ORG",
+                "ZG_WAY",
+                "GZ_DAY",
+                "WT_PERSON",
+                "PF_EXT",
+                "Asset_Type",
+                "is_check",
+              ],
+            };
+            getSelectData(params).then((data) => {
+              console.log(data);
+              if (data) {
+                //this.tgorgList = data.TG_ORG;
+                this.wayList = data.ZG_WAY;
+                this.dayList = data.GZ_DAY;
+                this.personList = data.WT_PERSON;
+                this.extList = data.PF_EXT;
+                this.assetTypeList = data.Asset_Type;
+                this.cChecked = data.is_check;
+              }
+            });
+          },
+          // 托管人下拉数据
+          trustmngr() {
+            trustmngrList().then((data) => {
+              if (data) {
+                this.trustmngrList = data;
+              }
+            });
+          },
+          // 投顾机构下拉数据
+          getOrgList() {
+            getOrgList().then((data) => {
+              if (data) {
+                this.tgorgList = data;
+              }
+            });
+          },
+          // 审核状态下拉框
+          getcChecked() {
+            getcChecked().then((data) => {
+              if (data) {
+                this.cChecked = data;
+              }
+            });
+          },
+
+          // 投资管理人下拉数据
+          org() {
+            orgList().then((data) => {
+              if (data) {
+                this.orgList = data;
+              }
+            });
+          },
+          // 投资经理下拉数据
+          getInvestMgrList() {
+            investMgrList().then((data) => {
+              if (data) {
+                this.investMgrList = data;
+              }
+            });
+          },
+          // 导出
+          exportExcel() {
+            const params = {
+              ...this.formInline,
+              startPage: this.page,
+              pageSize: this.size,
+            };
+            downLoadFile(params);
+          },
+          // 查询
+          searchFilter() {
+            this.loading = true;
+            const params = {
+              ...this.formInline,
+              startPage: this.page,
+              pageSize: this.size,
+            };
+            searchHandler(params).then(({ data }) => {
+              const { totalCount, records } = data;
+              this.total = totalCount;
+              this.tableData = records;
+              this.loading = false;
+            }).catch(()=>{
+              this.loading = false;
+              this.$message({
+                  showClose: true,
+                  message: "查询接口异常",
+                  type: "error",
+                });
+            });
+          },
+          // 重置
+          resetHandler() {
+            this.$refs.searchForm.resetFields();
+          },
+          // 新增
+          add() {
+            this.visible = true;
+            this.title = "新增";
+          },
+          // 编辑
+          editRow(row) {
+            specialInfo({ id: row.id }).then(({ data }) => {
+              if (data) {
+                let infoExts = data.infoExts ? data.infoExts : [];
+                infoExts = infoExts.map((item, index) => ({
+                  index,
+                  ...item,
+                }));
+                const datas = JSON.parse(JSON.stringify(infoExts));
+                this.currentData = { ...data, infoExts };
+                this.resetData = { ...data, infoExts: datas };
+
+                this.visible = true;
+                this.title = "编辑";
+              } else {
+                this.$message({
+                  showClose: true,
+                  message: "业务办理失败.",
+                  type: "error",
+                });
+              }
+            }).catch(()=>{
+              this.$message({
+                showClose: true,
+                message: "编辑接口异常",
+                type: "error",
+              });
+            });
+          },
+          // 查看
+          lookRow(row) {
+            specialInfo({ id: row.id }).then(({ data }) => {
+              if (data) {
+                this.currentData = { ...data, disabled: true };
+                this.title = "查看";
+                this.visible = true;
+              } else {
+                this.$message({
+                  showClose: true,
+                  message: "业务办理失败.",
+                  type: "error",
+                });
+              }
+            }).catch(()=>{
+              this.$message({
+                showClose: true,
+                message: "查看接口异常",
+                type: "error",
+              });
+            });
+          },
+          // 审核/反审核
+          handleStatus(row) {
+            const params = {
+              id: row.id,
+              pfId: row.pfId,
+              cChecked: row.cChecked ? 0 : 1,
+            };
+            specialCheck(params).then(({ data }) => {
+              if (data == null) {
+                this.$message({
+                  showClose: true,
+                  message: "不能审核/反审核自己创建或修改的记录",
+                  type: "error",
+                });
+              } else if (data) {
+                this.$message({
+                  showClose: true,
+                  message: "业务处理成功",
+                  type: "success",
+                });
+                this.searchFilter();
+              } else {
+                this.$message({
+                  showClose: true,
+                  message: "业务办理失败",
+                  type: "error",
+                });
+              }
+            }).catch(()=>{
+              this.$message({
+                showClose: true,
+                message: "接口异常",
+                type: "error",
+              });
+            });
+          },
+          // 每页展示条数
+          handleSizeChange(val) {
+            this.size = val;
+          },
+          // 当前页
+          handleCurrentChange(val) {
+            console.log(`当前页: ${val}`);
+            this.page = val;
+          },
+          // 关闭弹窗
+          handleClose() {
+            this.visible = false;
+            this.currentData = {};
+          },
+          // 复位
+          reset() {
+            this.currentData = JSON.parse(JSON.stringify(this.resetData));
+          },
+          // 提交
+          submit() {
+            console.log(this.currentData);
+            if (this.currentData.chgDate > this.currentData.endDate) {
+              this.$message({
+                showClose: true,
+                message: "组合成立日不能大于截止日",
+                type: "warning",
+              });
+              return;
+            }
+            this.$refs.form.validate((valid) => {
+              if (valid) {
+                // 提交
+                const request = this.currentData.id
+                  ? specialUpdate
+                  : specialStrategySave;
+                request(this.currentData).then(({ data }) => {
+                  if (data) {
+                    this.$message({
+                      showClose: true,
+                      message: "业务办理成功.",
+                      type: "success",
+                    });
+                    this.visible = false;
+                    this.searchFilter();
+                  } else {
+                    this.$message({
+                      showClose: true,
+                      message: "业务办理失败.",
+                      type: "error",
+                    });
+                  }
+                }).catch(()=>{
+                  this.$message({
+                    showClose: true,
+                    message: "接口异常",
+                    type: "error",
+                  });
+                });
+              }
+            });
+          },
+          // 弹出框-扩展-新增
+          formAdd() {
+            console.log(11111, this.currentData);
+            if (this.currentData.infoExts && this.currentData.infoExts.length) {
+              this.currentData.infoExts.push({
+                index: this.currentData.infoExts.length,
+              });
+            } else {
+              this.currentData = {
+                ...this.currentData,
+                infoExts: [{ index: 0 }],
+              };
+            }
+          },
+          // 弹出框-扩展-删除
+          formDelete() {
+            if (this.infoExtsCheckBoxData && this.infoExtsCheckBoxData.length) {
+              const infoExts = this.currentData.infoExts.filter((item) => {
+                let isTrue = false;
+                for (var i = 0; i < this.infoExtsCheckBoxData.length; i++) {
+                  if (this.infoExtsCheckBoxData[i].index === item.index) {
+                    isTrue = true;
+                  }
+                }
+                return !isTrue;
+              });
+              this.currentData.infoExts = infoExts;
+              this.$message({
+                showClose: true,
+                message: "删除成功",
+                type: "success",
+              });
+            } else {
+              this.$message({
+                showClose: true,
+                message: "没有可删除的选项",
+                type: "warning",
+              });
+            }
+          },
+          // 扩展选择项变化
+          handleSelectionChange(val) {
+            this.infoExtsCheckBoxData = val;
+          },
+          handleAllSelect(val) {
+            console.log(222, val);
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,42 @@
+.marked {
+    width: 50px;
+    height: 20px;
+    margin: auto;
+}
+
+.marked-grey {
+    background: rgb(216, 228, 230);
+}
+
+.marked-green {
+    background: rgb(76, 168, 255);
+}
+
+.marked-bright {
+    background: rgb(6, 238, 130);
+}
+
+.marked-red {
+    background: rgb(255, 41, 41);
+    cursor: pointer;
+}
+.marked-red:active{
+    background: rgb(252, 4, 4);
+    transform: scale(1.2);
+}
+
+.table-title-show {
+    height: 40px;
+    display: flex;
+}
+
+.marked-title {
+    width: 80px;
+    height: 30px;
+    text-align: center;
+    line-height: 30px;
+}
+
+.select-btn-box {
+    float: right;
+}

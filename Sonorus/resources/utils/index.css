@@ -1,0 +1,64 @@
+body {
+  /* height: 100%; */
+  height: 100vh;
+  margin: 0;
+  box-sizing: border-box;
+  overflow: hidden !important;
+  padding: 10px 20px !important;
+}
+
+#mainApp {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 5px;
+  box-sizing: border-box;
+}
+
+/* 头部 select */
+.select-header {
+  border-bottom: 1px solid #ccc;
+  padding: 0 20px;
+}
+
+.select-btn-box {
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.el-form-item {
+  margin-bottom: 0;
+}
+
+.el-col-zidingyi {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.el-col-zidingyi>div {
+  width: 100%;
+}
+
+.el-form-item__label {
+  font-size: 12px;
+}
+
+/* table 区域 */
+.table-content {
+  flex: 1;
+  padding-top: 10px;
+}
+.el-form-item__error {
+  padding-top: 0;
+}
+
+.pagination-box {
+  display: flex;
+  justify-content: flex-end;
+}

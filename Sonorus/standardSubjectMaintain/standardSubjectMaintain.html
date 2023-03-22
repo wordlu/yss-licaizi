@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script
+      type="text/javascript"
+      src="../resources/babel/browser.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="../resources/babel-polyfill/dist/polyfill.js"
+    ></script>
+    <script src="../resources/vue/vue-2.5.17.js"></script>
+    <link
+      rel="stylesheet"
+      href="../resources/element-ui/lib/theme-chalk/index.css"
+    />
+    <script src="../resources/element-ui/lib/index.js"></script>
+    <script src="../resources/axios/dist/axios.js"></script>
+    <script src="../resources/utils/constant.js"></script>
+    <script src="../resources/utils/helper.js"></script>
+    <script src="../resources/standardSubjectMaintain/api.js"></script>
+    <!-- css -->
+    <link rel="stylesheet" href="../resources/utils/index.css" />
+    <link
+      rel="stylesheet"
+      href="../resources/standardSubjectMaintain/index.css"
+    />
+    <title>标准科目体系维护</title>
+    <script type="text/javascript">
+      var standardSubjectMaintainRoot = "";
+    </script>
+  </head>
+  <body>
+    <div id="mainApp" class="app-container">
+      <filter-component
+        :filter-data="filterData"
+        :org-list="orgList"
+        :km-tx="kmTx"
+        :km-cls="kmCls"
+        :c-checked="cChecked"
+        @reset-filter="resetFilter"
+        @search-filter="filterSearch"
+      ></filter-component>
+
+      <table-component
+        :table-data="tableData"
+        :current-page="page"
+        :page-size="size"
+        :loading="loading"
+        :form-table-rules="formTableRules"
+        :height="height"
+        :table-height="tableBoxHeight"
+        :km-cls="kmCls"
+        :c-checked="cChecked"
+        :jd-way="jdWay"
+        :cury="cury"
+        :level-list="levelAllByClassId"
+        :maptype-list="mapType"
+        :isV-list="isV"
+        :is-datail="isDatail"
+        :filter-disabled="filterDisabled"
+        :excel-title="filterData.jigou"
+        :current-info="currentInfo"
+        :total="total"
+        @search-info="searchHandler"
+        @handle-current-change="handleCurrentChange"
+        @change-size="handleSizeChange"
+        @operation-excel="operationExcel"
+      ></table-component>
+    </div>
+    <script
+      type="text/babel"
+      src="./components/filter.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="./components/table.js"
+    ></script>
+
+    <script type="text/babel">
+      let standardSubjectMaintainVue = new Vue({
+        el: "#mainApp",
+        data() {
+          const validateConditionSlot = (rule, value, callback) => {
+            console.log(rule, value);
+            callback();
+          };
+          return {
+            page: 1,
+            size: 100,
+            total: 0,
+            loading: false,
+            currentInfo: {
+              orgInfo: {},
+              subjSystemInfo: {},
+            },
+            filterData: {
+              cSubjCode: "",
+              cSubjName: "",
+              cSubjCls: "",
+              // orgId: orgId,
+              // subjSystem: subjSystem,
+              orgId:"",
+              subjSystem:"",
+              cChecked: "",
+            },
+            tableData: [
+              // {
+              //   shenheStatus: 1, // cChecked 0可操作 1不可操作
+              //   id: "11111", // id
+              //   code: "111", // cSubjCode 科目代码
+              //   name: "一", // cSubjName 科目名称
+              //   type: "1-1", // cSubjCls 科目类别
+              //   xiangmu: "项目一", // cPaCode 核算项目
+              //   fangxiang: "方向一", // nWay 余额方向
+              //   bizhong: "币种一", // cCuryCode 币种
+              //   mXkemu: "明细科目一", // isDetail 明细科目
+              //   fujikemu: "父级科目一", // pSubjCode 父级科目代码
+              //   chuangjianren: "创建人一", // createPrsn 创建人
+              //   shenhesren: "审核人一", // checkName 审核人
+              //   date: "2016-05-04", // createTime 创建时间
+              //   disabled: false,
+              //   isUpdate: false,
+              // },
+            ],
+            orgList: [],
+            cChecked: [],
+            kmTx: [],
+            kmCls: [],
+            jdWay: [],
+            cury: [],
+            levelAllByClassId: [],
+            mapType: [],
+            isV: [],
+            isDatail: [],
+            formTableRules: {
+              input: [
+                {
+                  required: true,
+                  // validator: validateConditionSlot,
+                  message: "请输入内容",
+                  tirgger: ["blur", "change"],
+                },
+              ],
+              select: [
+                {
+                  required: true,
+                  message: "请选择",
+                  trigger: "change",
+                },
+              ],
+            },
+            height: 0,
+            tableBoxHeight: 0,
+          };
+        },
+        computed: {
+          filterDisabled: function () {
+            return !(this.filterData.orgId && this.filterData.subjSystem);
+          },
+        },
+        watch: {
+          "filterData.orgId": {
+            handler(newVal, oldVal) {
+              if (!newVal) return;
+
+              const currentItem = this.orgList.filter(
+                (item) => item.keyId === newVal
+              );
+              if (currentItem.length) {
+                // this.currentInfo.orgName = currentItem[0].keyName;
+                this.currentInfo.orgInfo = currentItem[0];
+              }
+            },
+            deep: true,
+          },
+          "filterData.subjSystem": {
+            handler(newVal, oldVal) {
+              if (!newVal) return;
+              console.log(11111, this.kmTx);
+
+              const currentItem = this.kmTx.filter(
+                (item) => item.keyId === newVal
+              );
+              if (currentItem.length) {
+                // this.currentInfo.subjSystemName = currentItem[0].keyName;
+                this.currentInfo.subjSystemInfo = currentItem[0];
+              }
+            },
+            deep: true,
+          },
+          page(val) {
+            this.searchHandler();
+          },
+          size(val) {
+            this.searchHandler();
+          },
+        },
+        mounted() {
+          this.height =
+            document.getElementsByClassName("form-box")[0].offsetHeight + "px";
+
+          this.tableBoxHeight =
+            document.getElementById("mainApp").offsetHeight -
+            document.getElementsByClassName("select-header")[0].offsetHeight +
+            "px";
+          this.getOrgList();
+          this.getkmTx();
+          // 请求科目类别、余额方向、币种、明细科目、科目层级
+          this.getAllByClassIdCLS();
+          this.getAllByClassIdWAY();
+          this.getAllByClassIdCURY();
+          // this.getAllByClassIdDATAIL();
+          this.getLevelAllByClassId();
+          this.getMapType();
+          this.getisV();
+          this.getCChecked();
+        },
+        methods: {
+          // 获取机构
+          getOrgList() {
+            getOrgList().then((data) => {
+              this.orgList = data;
+            });
+          },
+          // 获取科目体系
+          getkmTx() {
+            getAllByClassId().then((data) => {
+              this.kmTx = data;
+            });
+          },
+          // 获取科目类别
+          getAllByClassIdCLS() {
+            allByClassIdCLS().then((data) => {
+              this.kmCls = data;
+            });
+          },
+          // 获取审核状态
+          getCChecked() {
+            getCChecked().then((data) => {
+              this.cChecked = data;
+            });
+          },
+          // 获取余额方向
+          getAllByClassIdWAY() {
+            allByClassIdWAY().then((data) => {
+              this.jdWay = data;
+            });
+          },
+          // 获取币种
+          getAllByClassIdCURY() {
+            allByClassIdCURY().then((data) => {
+              this.cury = data;
+            });
+          },
+          // 获取明细科目
+          getAllByClassIdDATAIL() {
+            allByClassIdDATAIL().then((data) => {
+              this.isDatail = data;
+            });
+          },
+          // 获取科目层级
+          getLevelAllByClassId() {
+            getLevelAllByClassId().then((data) => {
+              console.log(111, data);
+              this.levelAllByClassId = data;
+            });
+          },
+          // 获取科目层级
+          getMapType() {
+            getMapType().then((data) => {
+              console.log(111, data);
+              this.mapType = data;
+            });
+          },
+          getisV() {
+            getisV().then((data) => {
+              console.log(111, data);
+              this.isV = data;
+            });
+          },
+          // 重置查询条件
+          resetFilter() {
+            this.filterData = {
+              cSubjCode: "",
+              cSubjName: "",
+              cSubjCls: "",
+              orgId: "",
+              subjSystem: "",
+              cChecked: "",
+            };
+          },
+          // 查询筛选
+          filterSearch(data) {
+            console.log("---查询---", this.filterData, data);
+            this.filterData = data;
+            if (this.page == 1) {
+              this.searchHandler();
+            } else {
+              this.page = 1;
+            }
+          },
+          // 查询
+          searchHandler() {
+            const params = {
+              startPage: this.page,
+              pageSize: this.size,
+              ...this.filterData,
+            };
+
+            this.loading = true;
+            getSubjectList(params).then(({ code, data }) => {
+              console.log(9999, data);
+              if (data) {
+                const { totalCount, records } = data;
+                this.total = totalCount;
+                this.tableData = records;
+              }
+              this.loading = false;
+            }).catch(()=>{
+              this.$message({
+                showClose: true,
+                message: "查询失败~",
+                type: "error",
+              });
+              this.loading = false;
+            });
+          },
+          // 新增
+          addDialogVisible() {
+            this.tableData.push({ isAdd: true });
+          },
+          // excel处理
+          operationExcel(status) {
+            if (status === "export") {
+              console.log("导出");
+              const params = {
+                startPage: this.page,
+                pageSize: this.size,
+                ...this.filterData,
+              };
+
+              downLoadFile(params);
+              return;
+            }
+
+            console.log("导入");
+          },
+          // 修改页数
+          handleCurrentChange(page) {
+            this.page = page;
+          },
+          // 修改每页显示条数
+          handleSizeChange(val) {
+            console.log(val);
+            this.size = val;
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

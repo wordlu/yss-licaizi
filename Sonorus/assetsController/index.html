@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script
+      type="text/javascript"
+      src="../resources/babel/browser.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="../resources/babel-polyfill/dist/polyfill.js"
+    ></script>
+    <script src="../resources/vue/vue-2.5.17.js"></script>
+    <link
+      rel="stylesheet"
+      href="../resources/element-ui/lib/theme-chalk/index.css"
+    />
+    <script src="../resources/element-ui/lib/index.js"></script>
+    <script src="../resources/axios/dist/axios.js"></script>
+
+    <script src="../resources/utils/helper.js"></script>
+    <script src="../resources/assetsController/api.js"></script>
+    <!-- css -->
+    <link rel="stylesheet" href="../resources/utils/index.css" />
+    <link rel="stylesheet" href="../resources/assetsController/index.css" />
+    <title>专户资产科目映射</title>
+    <script type="text/javascript">
+      var assetsControllerRoot = "";
+    </script>
+  </head>
+  <body>
+    <div id="mainApp">
+      <div class="btn-container">
+        <el-button type="primary" size="mini" @click="submit">保存</el-button>
+        <el-button type="primary" size="mini" @click="exportExcel"
+          >excel导出
+        </el-button>
+
+        <el-button type="primary" size="mini" @click="batchAudit(1)"
+          >批量审核
+        </el-button>
+        <el-button type="primary" size="mini" @click="batchAudit(0)"
+          >批量反审核
+        </el-button>
+      </div>
+      <div class="content-container">
+        <div class="table-container">
+          <div class="filter-container">
+            <el-form class="filter-form" :model="filterParams" :inline="true" ref="formRef">
+              <el-form-item prop="orgId">
+                <el-select
+                  placeholder="请选择机构"
+                  filterable
+                  v-model="filterParams.orgId"
+                  size="mini"
+                  clearable
+                >
+                  <el-option
+                    v-for="item in orgList"
+                    :key="item.keyId"
+                    :value="item.keyId"
+                    :label="item.keyName"
+                  >
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item prop="subjSystem">
+                <el-select
+                  placeholder="标准科目体系"
+                  v-model="filterParams.subjSystem"
+                  size="mini"
+                >
+                  <el-option
+                    v-for="item in allByClassId"
+                    :key="item.keyId"
+                    :value="item.keyId"
+                    :label="item.keyName"
+                  >
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item prop="nSubjLevel">
+                <el-select
+                  placeholder="科目层级"
+                  v-model="filterParams.nSubjLevel"
+                  size="mini"
+                >
+                  <el-option
+                    v-for="item in levelAllByClassId"
+                    :key="item.keyId"
+                    :value="item.keyId"
+                    :label="item.keyName"
+                  >
+                  </el-option>
+                </el-select>
+              </el-form-item>
+              <el-form-item prop="cChecked">
+                <el-select
+                  placeholder="审核状态"
+                  v-model="filterParams.cChecked"
+                  size="mini"
+                >
+                  <el-option
+                    v-for="item in cChecked"
+                    :key="item.keyId"
+                    :value="item.keyId"
+                    :label="item.keyName"
+                  >
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-form>
+            <div class="btn-box">
+              <el-button type="primary" size="mini" @click="searchHandler"
+                >查询
+              </el-button>
+              <el-button type="primary" size="mini" @click="resetHandler"
+                >重置
+              </el-button>
+            </div>
+          </div>
+
+          <div class="form-box">
+            <el-form :model="formTableDatas" class="table-list">
+              <el-table
+                class="table-box"
+                :height="tableHeight"
+                :data="formTableDatas.tableData"
+                border
+                style="width: 100%"
+                :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+                v-loading="loading"
+                empty-text="暂无数据"
+                highlight-current-row
+                :row-class-name="tableRowClassName"
+                :row-style="{fontSize:'12px',}"
+                @row-dblclick="tableRowDblclick"
+                @cell-click="handleCurrentChange"
+                @selection-change="selectionChange"
+              >
+                <el-table-column type="selection" width="60"></el-table-column>
+                <el-table-column label="操作" align="center" width="150">
+                  <template slot-scope="{row,$index}">
+                    <el-button
+                      size="mini"
+                      :disabled="!row.cSubjCodeBz && !row.cSubjNameBz"
+                      @click.stop="handleAudit($index, row)"
+                      >{{Number(row.cChecked)?'反审核':'审核'}}
+                    </el-button>
+                    <el-button
+                      v-show="!row.cChecked?true:false"
+                      size="mini"
+                      type="danger"
+                      :disabled="!row.cSubjCodeBz && !row.cSubjNameBz"
+                      @click.stop="handleDelete($index, row)"
+                      >删除
+                    </el-button>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  prop="orgName"
+                  label="机构名称"
+                  align="left"
+                  width="100"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="cSubjCode"
+                  label="科目代码"
+                  align="left"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="cSubjName"
+                  label="科目名称"
+                  align="left"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="cSubjCodeBz"
+                  label="对应标准科目代码"
+                  width="120"
+                  align="left"
+                  show-overflow-tooltip
+                >
+                  <!-- <template slot-scope="{row,$index}">
+                                    <el-form-item :prop="'tableData.'+$index+'.code'">
+                                      <el-input v-model="row.code" size="mini" placeholder="请输入对应标准科目代码" :disabled="row.auditStatus?true:false" @change="(val)=>handleChangeInput({index:$index,type:'code',val,row})"></el-input>
+                                    </el-form-item>
+                                  </template> -->
+                </el-table-column>
+                <el-table-column
+                  prop="cSubjNameBz"
+                  label="对应标准科目名称"
+                  width="120"
+                  align="left"
+                  show-overflow-tooltip
+                >
+                  <!-- <template slot-scope="{row,$index}">
+                                    <el-form-item :prop="'tableData.'+$index+'.bzname'">
+                                      <el-input v-model="row.bzname" size="mini" placeholder="请输入对应标准科目名称" :disabled="row.auditStatus?true:false" @change="(val)=>handleChangeInput({index:$index,type:'bzname',val,row})"></el-input>
+                                    </el-form-item>
+                                  </template> -->
+                </el-table-column>
+                <el-table-column
+                  prop="subjSystemBz"
+                  label="对应标准科目体系"
+                  width="120"
+                  align="left"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="nSubjLevelName"
+                  label="科目层级"
+                  align="left"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <!-- <el-table-column
+                            prop="isValidName"
+                            label="有效状态"
+                            align="center"
+                          >
+                          </el-table-column
+                          > -->
+                <el-table-column
+                  prop="checkName"
+                  label="审核人"
+                  align="center"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+                <el-table-column
+                  prop="mdfyPrsn"
+                  label="修改人"
+                  align="center"
+                  show-overflow-tooltip
+                >
+                </el-table-column>
+              </el-table>
+            </el-form>
+          </div>
+          <el-pagination
+            class="pagination"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentStartChange"
+            :current-page="startPage"
+            :page-sizes="[100,300,500]"
+            :page-size="pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+          >
+          </el-pagination>
+        </div>
+        <div class="tree-container">
+          <div class="tree-btn-container">
+            <el-select
+              placeholder="标准科目体系"
+              v-model="subjSystemBzId"
+              size="mini"
+              @change="handleChange"
+            >
+              <el-option
+                v-for="item in allByClassId"
+                :key="item.keyId"
+                :value="item.keyId"
+                :label="item.keyName"
+              >
+              </el-option>
+            </el-select>
+            <el-button type="primary" size="mini" @click="synchroTree"
+              >同步
+            </el-button>
+          </div>
+          <el-input
+            placeholder="输入关键字进行过滤"
+            v-model="filterText"
+            size="mini"
+          >
+          </el-input>
+
+          <el-tree
+            class="filter-tree"
+            :data="data"
+            :props="defaultProps"
+            default-expand-all
+            :filter-node-method="filterNode"
+            ref="tree"
+            @node-click="handleClickTree"
+            v-loading="treeLoading"
+          >
+          </el-tree>
+        </div>
+      </div>
+    </div>
+    <script type="text/babel">
+      new Vue({
+        el: "#mainApp",
+        data() {
+          return {
+            // 机构
+            orgList: [],
+            // 科目体系
+            allByClassId: [],
+            // 科目层级
+            levelAllByClassId: [],
+            // 有效状态
+            cChecked: [],
+            // 查询参数
+            filterParams: {
+              orgId: "",
+              subjSystem: "",
+              nSubjLevel: "",
+              cChecked: "",
+            },
+            subjSystemBzId: "",
+            subjSystemBz: "",
+            loading: false,
+            formTableDatas: {
+              tableData: [
+                // {
+                //   id: 1, // id 流水号
+                //   auditStatus: 1, // cChecked  可操作0 禁止操作1
+                //   jh: "1002", // orgId 资产管理计划
+                //   name: "存款", // cSubjName 科目名称
+                //   code: "1002", // cSubjCodeBz 标准科目代码
+                //   bzname: "存款", // cSubjNameBz 标准科目名称
+                //   people: "XXX", // createPrsnName 修改人
+                // },
+              ],
+            },
+            // 查询数据总条数
+            total: 0,
+            // 每页查询总条数
+            pageSize: 100,
+            // 查询页数
+            startPage: 1,
+            dbClickCurrentRow: {},
+            currentIndex: null,
+            filterText: "",
+            data: [],
+            defaultProps: {
+              children: "children",
+              label: "menuHead",
+            },
+            selectionList: null,
+            tableHeight: null,
+            treeLoading: false,
+          };
+        },
+        mounted() {
+          // this.tableHeight =
+          //   document.getElementsByClassName("table-container")[0].offsetHeight -
+          //   document.getElementsByClassName("filter-container")[0]
+          //     .offsetHeight -
+          //   document.getElementsByClassName("pagination ")[0].offsetHeight -
+          //   5;
+          this.tableHeight =
+            document.getElementsByClassName("form-box")[0].offsetHeight + "px";
+
+          // this.searchHandler();
+          this.getOrgList();
+          this.getAllByClassId();
+          this.getLevelAllByClassId();
+          this.getCChecked();
+        },
+        computed: {},
+        watch: {
+          // "filterParams.orgId": {
+          //   handler(newVal, oldVal) {
+          //     if (!newVal) return;
+          //     console.log(11111, newVal);
+          //     this.searchHandler();
+          //   },
+          //   deep: true,
+          // },
+          // "filterParams.subjSystem": {
+          //   handler(newVal, oldVal) {
+          //     if (!newVal) return;
+          //     console.log(11111, newVal);
+          //     this.searchHandler();
+          //   },
+          //   deep: true,
+          // },
+
+          filterText(val) {
+            this.$refs.tree.filter(val);
+          },
+
+          subjSystemBzId(newVal) {
+            this.assetsSearchTree();
+          },
+        },
+        methods: {
+          // 获取机构
+          getOrgList() {
+            getOrgList().then((data) => {
+              this.orgList = data;
+            });
+          },
+          // 获取科目体系
+          getAllByClassId() {
+            getAllByClassId().then((data) => {
+              if (data) {
+                this.allByClassId = data;
+                if (data.length) {
+                  this.subjSystemBzId = data[0].keyId;
+                  this.subjSystemBz = data[0].keyName;
+                }
+              }
+            });
+          },
+          // 获取科目层级
+          getLevelAllByClassId() {
+            getLevelAllByClassId().then((data) => {
+              this.levelAllByClassId = data;
+            });
+          },
+          // 获取有效状态
+          getCChecked() {
+            getCChecked().then((data) => {
+              this.cChecked = data;
+            });
+          },
+          // 右侧树
+          assetsSearchTree() {
+            this.treeLoading = true;
+            assetsSearchTree({ keyId: this.subjSystemBzId }).then((data) => {
+              console.log(data);
+              if (data) {
+                this.data = data;
+              }
+              this.treeLoading = false;
+            }).catch(()=>{
+              this.$message({
+                showClose: true,
+                message: "树查询失败",
+                type: "error",
+              });
+              this.treeLoading = false;
+            });
+          },
+          // 查询
+          searchHandler() {
+            this.loading = true;
+            const params = {
+              ...this.filterParams,
+              startPage: this.startPage,
+              pageSize: this.pageSize,
+            };
+            console.log("---查询", params);
+            assetsSearch(params).then((res) => {
+              const { data, total } = res;
+              console.log(data, total);
+              this.total = total;
+              this.formTableDatas.tableData = data;
+              this.loading = false;
+            }).catch(()=>{
+              this.$message({
+                showClose: true,
+                message: "查询失败",
+                type: "error",
+              });
+              this.loading = false;
+            });
+          },
+          // 重置
+          resetHandler() {
+            this.$refs.formRef.resetFields();
+          },
+          // 反审核
+          handleAudit(index, row) {
+            console.log(row);
+            //const params = {...row,cChecked: 0,};
+            const params = {
+              ...row,
+              cChecked: Number(row.cChecked) ? 0 : 1,
+            };
+            delete params.isUpdate;
+            //delete params.row_index;
+            assetsAudit(params).then(({ data }) => {
+              console.log("--反审核---", data);
+              if (data == null || data == "undefined") {
+                this.$message({
+                  showClose: true,
+                  message: "不可复核自己修改的记录！",
+                  type: "error",
+                });
+              } else if (data.id == null) {
+                this.$message({
+                  showClose: true,
+                  message: "保存后才可审核！",
+                  type: "error",
+                });
+              } else if (data) {
+                this.$set(this.formTableDatas.tableData, index, data);
+                this.$message({
+                  showClose: true,
+                  message: "状态修改成功",
+                  type: "success",
+                });
+              } else {
+                this.$message({
+                  showClose: true,
+                  message: "状态修改失败",
+                  type: "error",
+                });
+              }
+            }).catch(()=>{
+              this.$message({
+                showClose: true,
+                message: "状态修改失败",
+                type: "error",
+              });
+            });
+          },
+          // 单条删除
+          handleDelete(index,row) {
+            this.$confirm("确定要删除么?", "提示", {
+              confirmButtonText: "确定",
+              cancelButtonText: "取消",
+              type: "warning",
+            })
+              .then(() => {
+                // 走删除接口
+                deleteRow({id:row.id}).then(data=>{
+                  if(data){
+                    this.$message({
+                      showClose: true,
+                      message: "删除成功",
+                      type: "success",
+                    });
+                    this.searchHandler();
+                  }else{
+                    this.$message({
+                      showClose: true,
+                      message: "删除失败",
+                      type: "error",
+                    });
+                  }
+                }).catch(()=>{
+                  this.$message({
+                    showClose: true,
+                    message: "删除失败",
+                    type: "error",
+                  });
+                })
+              })
+              .catch(() => {
+                console.log("取消删除");
+              });
+          },
+          // 修改input
+          // handleChangeInput({ index, type, val, row }) {
+          //   console.log(11111, val, index, row);
+          //   this.formTableDatas.tableData[index][type] = val;
+          //   if (row.id) {
+          //     this.formTableDatas.tableData[index].isUpdate = true;
+          //   }
+          // },
+          // 更新和新增row动态标注底色背景
+          tableRowClassName({ row, rowIndex }) {
+            row.row_index = rowIndex;
+            if (!row.cSubjCodeBz && !row.cSubjNameBz) {
+              return "danger-row";
+            } else if (row.isUpdate) {
+              return "warning-row";
+            }
+            return "";
+          },
+          // 表格某一行被双击时
+          tableRowDblclick(currentRow) {},
+          // 表格的单击时触发
+          handleCurrentChange(currentRow) {
+            console.log(
+              "---点击当前行---",
+              currentRow,
+              this.formTableDatas.tableData
+            );
+            if (Number(currentRow.cChecked)) {
+              this.$message({
+                showClose: true,
+                message: "审核状态无法修改当前数据",
+                type: "warning",
+                duration: 2000,
+              });
+              this.currentIndex = null;
+            } else {
+              // 红色标志新增
+              // 黄色标志修改
+              this.currentIndex = currentRow.row_index;
+            }
+          },
+          // 每页展示条数变化
+          handleSizeChange(val) {
+            console.log("change-size", val);
+            this.pageSize = val;
+            this.searchHandler();
+          },
+          // 当前页
+          handleCurrentStartChange(val) {
+            console.log(`当前页: ${val}`);
+            this.startPage = val;
+            this.searchHandler();
+          },
+          // 筛选调用 true要渲染
+          filterNode(value, data) {
+            console.log(value, data);
+            if (!value) return true;
+            // return data.label.indexOf(value) !== -1;
+            return data.menuHead.indexOf(value) !== -1;
+          },
+          // 选择右边树事件
+          handleClickTree(data) {
+            console.log(data);
+            //if (data.level != 3 || typeof this.currentIndex !=='number') return;
+            if (data.level < 3 || typeof this.currentIndex !== "number") return;
+            // const select = data.val.split(" ");
+            // console.log(select);
+
+            this.$set(this.formTableDatas.tableData, this.currentIndex, {
+              ...this.formTableDatas.tableData[this.currentIndex],
+              isUpdate: true,
+              // cSubjCodeBz: select[0],
+              // cSubjNameBz: select[1],
+              subjSystemBz: this.subjSystemBzId,
+              cSubjCodeBz: data.cSubjCode,
+              cSubjNameBz: data.cSubjName,
+            });
+          },
+          // 导出excel
+          exportExcel() {
+            const data = this.formTableDatas.tableData;
+            if (!data.length) {
+              this.$message({
+                showClose: true,
+                message: "暂无数据,不可导出",
+                type: "error",
+              });
+            } else {
+              downLoadFile(
+                this.filterParams.orgId,
+                this.filterParams.subjSystem
+              );
+            }
+          },
+          // 保存
+          submit() {
+            const data = [];
+            this.formTableDatas.tableData.forEach((item) => {
+              if (item.isUpdate) {
+                const items = { ...item, ...this.filterParams };
+                delete items.isUpdate;
+                data.push(items);
+              }
+            });
+            console.log(data);
+            if (data.length) {
+              assetsSave(data).then((res) => {
+                if (res.data) {
+                  this.$message({
+                    showClose: true,
+                    message: "保存成功",
+                    type: "success",
+                  });
+                  this.searchHandler();
+                } else {
+                  this.$message({
+                    showClose: true,
+                    message: "保存失败",
+                    type: "error",
+                  });
+                }
+              }).catch(()=>{
+                this.$message({
+                  showClose: true,
+                  message: "保存失败",
+                  type: "error",
+                });
+              });
+            } else {
+              this.$message({
+                showClose: true,
+                message: "暂时还没有修改哦",
+                type: "warning",
+              });
+            }
+          },
+          // 批量忽略/取消忽略
+          ignore(isDel) {
+            if (this.selectionList && this.selectionList.length) {
+              const parmas = {
+                isDel,
+                data: this.selectionList,
+              };
+              ignore(parmas).then((res) => {
+                if (res.data) {
+                  this.$message({
+                    showClose: true,
+                    message: `批量${isDel == 1 ? "忽略" : "取消忽略"}成功`,
+                    type: "success",
+                  });
+                  this.searchHandler();
+                } else {
+                  this.$message({
+                    showClose: true,
+                    message: "业务办理失败",
+                    type: "error",
+                  });
+                }
+              });
+            } else {
+              this.$message({
+                showClose: true,
+                message: "暂时没选中的数据",
+                type: "warning",
+              });
+            }
+          },
+          // 批量有效/无效
+          valid(isValid) {
+            if (this.selectionList && this.selectionList.length) {
+              const parmas = {
+                isValid,
+                data: this.selectionList,
+              };
+              valid(parmas).then((res) => {
+                if (res.data) {
+                  this.$message({
+                    showClose: true,
+                    message: `批量${isValid == 0 ? "无效" : "有效"}成功`,
+                    type: "success",
+                  });
+                  this.searchHandler();
+                } else {
+                  this.$message({
+                    showClose: true,
+                    message: "业务办理失败",
+                    type: "error",
+                  });
+                }
+              });
+            } else {
+              this.$message({
+                showClose: true,
+                message: "暂时没选中的数据",
+                type: "warning",
+              });
+            }
+          },
+          // 批量审核/反审核
+          batchAudit(checked) {
+            if (this.selectionList && this.selectionList.length) {
+              const parmas = {
+                checked,
+                data: this.selectionList,
+              };
+              batchAudit(parmas).then((res) => {
+                if (res.data == null || res.data == "undefined") {
+                  this.$message({
+                    showClose: true,
+                    message: "不可复核自己修改的记录！",
+                    type: "error",
+                  });
+                } else if (res.data) {
+                  this.$message({
+                    showClose: true,
+                    message: `批量${checked == 1 ? "审核" : "反审核"}成功`,
+                    type: "success",
+                  });
+                  this.searchHandler();
+                } else {
+                  this.$message({
+                    showClose: true,
+                    message: "业务办理失败",
+                    type: "error",
+                  });
+                }
+              }).catch(()=>{
+                this.$message({
+                  showClose: true,
+                  message: "业务办理失败",
+                  type: "error",
+                });
+              });
+            } else {
+              this.$message({
+                showClose: true,
+                message: "暂时没选中的数据",
+                type: "warning",
+              });
+            }
+          },
+          selectable(row, index) {
+            if (Number(row.cChecked) == 1) {
+              return false;
+            } else if (Number(row.cChecked) == 0) {
+              return true;
+            }
+            return false;
+          },
+          selectionChange(selection) {
+            console.log(selection);
+            this.selectionList = selection;
+          },
+          // 同步
+          synchroTree() {
+            this.treeLoading = true;
+            synchroTree({ keyId: this.subjSystemBzId }).then((data) => {
+              if (data) {
+                this.data = data;
+              }
+              this.treeLoading = false;
+            }).catch(()=>{
+              this.$message({
+                showClose: true,
+                message: "树查询失败",
+                type: "error",
+              });
+              this.treeLoading = false;
+            });
+          },
+          // 右侧标准科目体系下拉
+          handleChange(id) {
+            this.allByClassId.forEach((item) => {
+              if (item.keyId === id) {
+                this.subjSystemBz = item.keyName;
+              }
+            });
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

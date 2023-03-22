@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script type="text/javascript" src="../resources/babel/browser.min.js"></script>
+    <script type="text/javascript" src="../resources/babel-polyfill/dist/polyfill.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="../resources/vue/vue-2.5.17.js"></script>
+    <link rel="stylesheet" href="../resources/element-ui/lib/theme-chalk/index.css" />
+    <script src="../resources/element-ui/lib/index.js"></script>
+    <script src="../resources/axios/dist/axios.js"></script>
+    <script src="../resources/utils/helper.js"></script>
+    <script src="../resources/strategicAccount/api.js"></script>
+    <!-- css -->
+    <link rel="stylesheet" href="../resources/utils/index.css" />
+    <link rel="stylesheet" href="../resources/strategicAccount/index.css" />
+    <title>策略专户信息维护</title>
+    <script>
+      var mdmRoot = '';
+    </script>
+  </head>
+
+  <body>
+    <div id="mainApp" style="display: none">
+      <el-form :model="queryParams" class="select-header" ref="ruleForm">
+        <el-row style="height: 80px">
+          <el-col :span="5" class="el-col-zidingyi">
+            <el-form-item prop="mngrId" label="管理人：" label-width="auto">
+              <el-input v-model="queryParams.mngrId" size="mini" style="width: 220px"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5" class="el-col-zidingyi">
+            <el-form-item prop="keyword" label="关键字：" label-width="auto">
+              <el-input v-model="queryParams.keyword" size="mini" style="width: 220px"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="4" class="select-btn-box el-col-zidingyi">
+            <el-button type="primary" size="mini" @click="searchHandler">查询</el-button>
+            <el-button type="info" size="mini" @click="resetHandler">重置</el-button>
+            <el-button size="mini" @click="dialogVisbleHandler(true)">新增</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div class="table-content">
+        <el-table
+          :data="tableData"
+          height="80vh"
+          border
+          style="width: 100%"
+          :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+          size="mini"
+        >
+          <el-table-column type="index" label="序号" width="60" align="center"> </el-table-column>
+          <el-table-column label="操作" width="200" align="center">
+            <template slot-scope="scope">
+              <el-button @click="editBtnHandleClick(scope.row)" type="text" size="small">编辑</el-button>
+              <el-button @click="seeBtnHandleClick(scope.row)" type="text" size="small">查看</el-button>
+            </template>
+          </el-table-column>
+          <el-table-column prop="name" label="名称" width="180" align="center"> </el-table-column>
+          <el-table-column prop="source" label="数据源" align="center"> </el-table-column>
+          <el-table-column prop="keyword" label="关键词" align="center"> </el-table-column>
+          <el-table-column prop="timeEffectInfo" label="时效信息" align="center"> </el-table-column>
+          <el-table-column prop="parseRuleTemplate" label="解析规则模板" align="center"> </el-table-column>
+          <el-table-column prop="assetCode" label="资产代码" align="center"> </el-table-column>
+          <el-table-column prop="mngrId" label="管理人" align="center"> </el-table-column>
+          <el-table-column prop="trustMngrId" label="托管人" align="center"> </el-table-column>
+          <el-table-column prop="depositaryId" label="受托人" align="center"> </el-table-column>
+          <el-table-column prop="trustId" label="委托人" align="center"> </el-table-column>
+          <el-table-column prop="chgDate" label="成立日期" align="center"> </el-table-column>
+          <el-table-column prop="endDate" label="组合到期日" align="center"> </el-table-column>
+        </el-table>
+        <div class="pagination-box">
+          <el-pagination
+            background
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="page"
+            :page-sizes="[30, 500, 100, 200]"
+            :page-size="size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+          >
+          </el-pagination>
+        </div>
+      </div>
+      <!-- 新增 弹窗 -->
+      <el-dialog
+        title="新增"
+        :visible.sync="addDialogVisible"
+        width="55%"
+        @close="newlyAddedDialogCloseHandler"
+      >
+        <el-form :model="newlyAdded" class="newly-added-module" ref="addForm">
+          <el-form-item prop="name" label="名称:" label-width="100px" :rules="addRule">
+            <el-select v-model="newlyAdded.name" placeholder="请选择" size="mini" style="width: 220px">
+              <el-option
+                v-for="item in nameOptionList"
+                :lable="item.sscName"
+                :value="item.sscName"
+                :key="item.sscName"
+              >
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item prop="assetCode" label="资产代码:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="newlyAdded.assetCode"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="数据源:" label-width="100px">
+            <el-input
+              v-model="newlyAdded.source"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="关键词:" label-width="100px">
+            <el-input
+              v-model="newlyAdded.keyword"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="时效信息:" label-width="100px">
+            <el-input
+              v-model="newlyAdded.timeEffectInfo"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="解析规则模板:" label-width="100px">
+            <el-input
+              v-model="newlyAdded.parseRuleTemplate"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            >
+            </el-input>
+          </el-form-item>
+          <el-form-item label="管理人:" label-width="100px">
+            <el-input
+              v-model="newlyAdded.mngrId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="托管人:" label-width="100px">
+            <el-input
+              v-model="newlyAdded.trustMngrId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="受托人:" label-width="100px">
+            <el-input
+              v-model="newlyAdded.depositaryId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="委托人:" label-width="100px">
+            <el-input
+              v-model="newlyAdded.trustId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="成立日期:" label-width="100px">
+            <el-date-picker
+              v-model="newlyAdded.chgDate"
+              type="date"
+              size="mini"
+              value-format="yyyyMMdd"
+              style="width: 220px"
+              placeholder="选择日期"
+            >
+            </el-date-picker>
+          </el-form-item>
+          <el-form-item label="组合到期日:" label-width="100px">
+            <el-date-picker
+              v-model="newlyAdded.endDate"
+              type="date"
+              size="mini"
+              value-format="yyyyMMdd"
+              style="width: 220px"
+              placeholder="选择日期"
+            >
+            </el-date-picker>
+          </el-form-item>
+        </el-form>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="addDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="confirmHandler">确 定</el-button>
+        </span>
+      </el-dialog>
+      <!-- 查看 弹窗  -->
+      <el-dialog title="查看" :visible.sync="viewDialogVisible" width="55%" @close="viewDialogCloseHandler">
+        <el-form :model="seeViewRow" class="newly-added-module" :disabled="true">
+          <el-form-item label="名称:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.name"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="资产代码:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.assetCode"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="数据源:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.source"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="关键词:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.keyword"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="时效信息:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.timeEffectInfo"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="解析规则模板:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.parseRuleTemplate"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            >
+            </el-input>
+          </el-form-item>
+          <el-form-item label="管理人:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.mngrId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="托管人:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.trustMngrId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="受托人:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.depositaryId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="委托人:" label-width="100px">
+            <el-input
+              v-model="seeViewRow.trustId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="成立日期:" label-width="100px">
+            <el-date-picker
+              v-model="seeViewRow.chgDate"
+              type="date"
+              size="mini"
+              value-format="yyyyMMdd"
+              style="width: 220px"
+              placeholder="选择日期"
+            >
+            </el-date-picker>
+          </el-form-item>
+          <el-form-item label="组合到期日:" label-width="100px">
+            <el-date-picker
+              v-model="seeViewRow.endDate"
+              type="date"
+              size="mini"
+              value-format="yyyyMMdd"
+              style="width: 220px"
+              placeholder="选择日期"
+            >
+            </el-date-picker>
+          </el-form-item>
+        </el-form>
+      </el-dialog>
+      <!-- 编辑 弹窗 -->
+      <el-dialog title="编辑" :visible.sync="editDialogVisible" width="55%" @close="editDialogCloseHandler">
+        <el-form :model="editRowData" class="newly-added-module" ref="editForm">
+          <el-form-item prop="name" label="名称:" label-width="100px" :rules="addRule">
+            <el-select v-model="editRowData.name" placeholder="请选择" size="mini" style="width: 220px">
+              <el-option
+                v-for="item in nameOptionList"
+                :lable="item.fileName"
+                :value="item.fileName"
+                :key="item.id"
+              >
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item prop="assetCode" label="资产代码:" label-width="100px" :rules="addRule">
+            <el-input
+              v-model="editRowData.assetCode"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="数据源:" label-width="100px">
+            <el-input
+              v-model="editRowData.source"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="关键词:" label-width="100px">
+            <el-input
+              v-model="editRowData.keyword"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="时效信息:" label-width="100px">
+            <el-input
+              v-model="editRowData.timeEffectInfo"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="解析规则模板:" label-width="100px">
+            <el-input
+              v-model="editRowData.parseRuleTemplate"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            >
+            </el-input>
+          </el-form-item>
+          <el-form-item label="管理人:" label-width="100px">
+            <el-input
+              v-model="editRowData.mngrId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="托管人:" label-width="100px">
+            <el-input
+              v-model="editRowData.trustMngrId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="受托人:" label-width="100px">
+            <el-input
+              v-model="editRowData.depositaryId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="委托人:" label-width="100px">
+            <el-input
+              v-model="editRowData.trustId"
+              size="mini"
+              style="width: 220px"
+              placeholder="请输入"
+            ></el-input>
+          </el-form-item>
+          <el-form-item label="成立日期:" label-width="100px">
+            <el-date-picker
+              v-model="editRowData.chgDate"
+              type="date"
+              size="mini"
+              value-format="yyyyMMdd"
+              style="width: 220px"
+              placeholder="选择日期"
+            >
+            </el-date-picker>
+          </el-form-item>
+          <el-form-item label="组合到期日:" label-width="100px">
+            <el-date-picker
+              v-model="editRowData.endDate"
+              type="date"
+              size="mini"
+              value-format="yyyyMMdd"
+              style="width: 220px"
+              placeholder="选择日期"
+            >
+            </el-date-picker>
+          </el-form-item>
+        </el-form>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="editDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="editConfirmHandler">确 定</el-button>
+        </span>
+      </el-dialog>
+    </div>
+    <script type="text/babel">
+      let vue = new Vue({
+        el: '#mainApp',
+        data() {
+          return {
+            queryParams: {
+              mngrId: '',
+              keyword: '',
+            },
+            tableData: [],
+            nameOptionList: [],
+            // 新增
+            addDialogVisible: false,
+            newlyAdded: {
+              name: '',
+              source: '',
+              keyword: '',
+              timeEffectInfo: '',
+              parseRuleTemplate: '',
+              assetCode: '',
+              mngrId: '',
+              trustMngrId: '',
+              depositaryId: '',
+              trustId: '',
+              chgDate: '',
+              endDate: '',
+            },
+            addRule: {
+              required: true,
+              message: '此输入项为必输项!',
+              trigger: 'change',
+            },
+            // 查看
+            viewDialogVisible: false,
+            seeViewRow: {
+              name: '',
+              source: '',
+              keyword: '',
+              timeEffectInfo: '',
+              parseRuleTemplate: '',
+              assetCode: '',
+              mngrId: '',
+              trustMngrId: '',
+              depositaryId: '',
+              trustId: '',
+              chgDate: '',
+              endDate: '',
+            },
+            // 编辑
+            editDialogVisible: false,
+            editRowData: {},
+            // 分页
+            page: 1,
+            total: 0,
+            size: 30,
+          };
+        },
+        created: function () {
+          document.getElementById('mainApp').style.display = 'block';
+        },
+        methods: {
+          //查询
+          searchHandler() {
+            getSSCRecordsHandler({ ...this.queryParams, startPage: this.page, pageSize: this.size }).then(
+              ({ data }) => {
+                const { records, totalCount = 0 } = data;
+                this.tableData = records;
+                this.total = totalCount;
+              }
+            );
+            // this.$refs['ruleForm'].validate((valid) => {
+            //   if (valid) {
+            //     getSSCRecordsHandler(this.queryParams).then((data) => {
+            //       this.tableData = data;
+            //     });
+            //   } else {
+            //     // this.$message({
+            //     //   showClose: true,
+            //     //   message: '请填写完整信息',
+            //     //   type: 'error',
+            //     // });
+            //     return false;
+            //   }
+            // });
+          },
+          resetHandler() {
+            this.queryParams = {
+              mngrId: '',
+              keyword: '',
+            };
+          },
+          dialogVisbleHandler(type) {
+            this.addDialogVisible = type;
+          },
+          // 新增确认
+          confirmHandler() {
+            this.$refs['addForm'].validate((valid) => {
+              if (valid) {
+                newEntryHandler({ ...this.newlyAdded, status: 1 }).then(({ data }) => {
+                  let type = data;
+                  if (type) {
+                    this.$message({
+                      showClose: true,
+                      message: '录入成功',
+                      type: 'success',
+                    });
+                    this.addDialogVisible = false;
+                    this.searchHandler();
+                  } else {
+                    this.$message({
+                      showClose: true,
+                      message: '录入失败',
+                      type: 'error',
+                    });
+                  }
+                });
+              } else {
+                return false;
+              }
+            });
+          },
+          // 关闭
+          newlyAddedDialogCloseHandler() {
+            this.newlyAdded = {
+              name: '',
+              source: '',
+              keyword: '',
+              timeEffectInfo: '',
+              parseRuleTemplate: '',
+              assetCode: '',
+              mngrId: '',
+              trustMngrId: '',
+              depositaryId: '',
+              trustId: '',
+              chgDate: '',
+              endDate: '',
+            };
+            setTimeout(() => {
+              this.$refs['addForm'].clearValidate();
+            }, 50);
+          },
+          // 查看
+          seeBtnHandleClick(row) {
+            this.seeViewRow = row;
+            this.viewDialogVisible = true;
+          },
+          viewDialogCloseHandler() {
+            this.seeViewRow = {
+              name: '',
+              source: '',
+              keyword: '',
+              timeEffectInfo: '',
+              parseRuleTemplate: '',
+              assetCode: '',
+              mngrId: '',
+              trustMngrId: '',
+              depositaryId: '',
+              trustId: '',
+              chgDate: '',
+              endDate: '',
+            };
+          },
+          // 编辑
+          editBtnHandleClick(row) {
+            this.editDialogVisible = true;
+            this.editRowData = { ...row };
+          },
+          editDialogCloseHandler() {
+            setTimeout(() => {
+              this.editRowData = {};
+              this.$refs['editForm'].clearValidate();
+            }, 100);
+          },
+          editConfirmHandler() {
+            this.$refs['editForm'].validate((valid) => {
+              if (valid) {
+                editHandler({ ...this.editRowData, status: 1 }).then(({ data }) => {
+                  let type = data;
+                  if (type) {
+                    this.$message({
+                      showClose: true,
+                      message: '编辑成功',
+                      type: 'success',
+                    });
+                    this.searchHandler();
+                  } else {
+                    this.$message({
+                      showClose: true,
+                      message: '编辑失败',
+                      type: 'error',
+                    });
+                  }
+                  this.editDialogVisible = false;
+                });
+              } else {
+                return false;
+              }
+            });
+          },
+          //分页
+          handleSizeChange(val) {
+            this.size = val;
+            this.page = 1;
+            this.searchHandler();
+          },
+          handleCurrentChange(val) {
+            this.page = val;
+            this.searchHandler();
+          },
+        },
+        mounted: function () {
+          getSSCRecordsHandler({ status: 0 }).then(({ data }) => {
+            const { records } = data;
+            this.nameOptionList = records;
+          });
+          this.searchHandler();
+        },
+      });
+    </script>
+  </body>
+</html>

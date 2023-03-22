@@ -1,0 +1,324 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script type="text/javascript" src="../resources/babel/browser.min.js"></script>
+  <script type="text/javascript" src="../resources/babel-polyfill/dist/polyfill.js"></script>
+  <script src="../resources/vue/vue-2.5.17.js"></script>
+  <link rel="stylesheet" href="../resources/element-ui/lib/theme-chalk/index.css" />
+  <script src="../resources/element-ui/lib/index.js"></script>
+  <script src="../resources/axios/dist/axios.js"></script>
+
+  <script src="../resources/utils/helper.js"></script>
+  <script src="./api.js"></script>
+  <!-- css -->
+  <link rel="stylesheet" href="../resources/utils/index.css" />
+  <link rel="stylesheet" href="./index.css" />
+  <title>接口数据导出</title>
+  <script type="text/javascript">
+    var netWorthSubjectRoot = "";
+  </script>
+</head>
+
+<body>
+  <div id="mainApp">
+    <div class="container">
+      <div class="tree-content">
+        <el-select v-model="selectVal" placeholder="树形结构请选择" size="mini" style="width: 95%">
+          <el-option v-for="item in options" :key="item.code" :label="item.name" :value="item.code">
+          </el-option>
+        </el-select>
+
+        <el-input placeholder="搜索" size="mini" v-model="filterText" style="margin-top: 10px; width: 95%">
+        </el-input>
+
+        <div class="tree">
+          <el-tree v-loading="treeLoading" class="filter-tree" :data="treeData" :props="defaultProps" node-key="id"
+            default-expand-all :filter-node-method="filterNode" ref="tree" show-checkbox @check="checkChange">
+          </el-tree>
+        </div>
+      </div>
+
+      <div class="table-content">
+        <div class="search-container">
+          <el-form :model="queryParams" ref="formRef">
+            <el-row :gutter="20">
+              <el-col :span="6" class="el-col-zidingyi">
+                <el-form-item prop="searchDate" label="业务日期：" label-width="auto">
+                  <el-date-picker v-model="queryParams.date" type="date" placeholder="选择日期" value-format="yyyyMMdd"
+                    size="mini" :clearable="false" style="width: 100%">
+                  </el-date-picker>
+                  </el-date-picker>
+                </el-form-item>
+              </el-col>
+
+              <el-col :span="6" class="el-col-zidingyi">
+                <el-form-item prop="type" label="接口类型：" label-width="auto">
+                  <el-select v-model="queryParams.type" placeholder="请选择" size="mini" style="width: 100%" clearable>
+                    <el-option v-for="item in typeList" :label="item.keyName" :value="item.keyId" :key="item.keyId">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+
+              <el-col :span="6" class="el-col-zidingyi">
+                <el-form-item prop="num" label="文件类型：" label-width="auto">
+                  <el-select v-model="queryParams.num" placeholder="请选择" size="mini" style="width: 100%" clearable>
+                    <el-option key="1" label="单文件" value="1"></el-option>
+                    <el-option key="2" label="多文件" value="2"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+
+              <el-col :span="6" class="el-col-zidingyi">
+                <div class="btn-box">
+                  <el-button type="primary" size="mini" @click="searchFilter">查询
+                  </el-button>
+                  <el-button type="primary" size="mini" @click="exportExcel">导出excel
+                  </el-button>
+                </div>
+              </el-col>
+            </el-row>
+          </el-form>
+        </div>
+        <div class="table">
+          <div class="table-container">
+            <el-table :data="tableData" border style="width: 100%"
+              :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}" :row-style="{fontSize:'12px'}"
+              class="table-box" :height="tableHeight" v-loading="loading">
+              <el-table-column prop="type" label="接口类型" width="100" align="center" show-overflow-tooltip>
+              </el-table-column>
+              <el-table-column prop="bzDate" label="业务日期" align="center" show-overflow-tooltip>
+              </el-table-column>
+              <el-table-column prop="createTime" label="导出时间" align="center" show-overflow-tooltip>
+              </el-table-column>
+              <el-table-column prop="createPrsn" label="导出人" align="center" show-overflow-tooltip>
+              </el-table-column>
+            </el-table>
+          </div>
+        </div>
+        <el-pagination class="pagination" @size-change="handleSizeChange" @current-change="handleCurrentChange"
+          :current-page="page" :page-sizes="[100,300,500]" :page-size="size"
+          layout="total, sizes, prev, pager, next, jumper" :total="total">
+        </el-pagination>
+      </div>
+    </div>
+  </div>
+  <script type="text/babel">
+    new Vue({
+      el: "#mainApp",
+      data() {
+        return {
+          queryParams: {
+            date: "",
+            type: "",
+            num: "",
+          },
+          selectVal: "",
+          // 下拉框
+          options: [],
+          filterText: "",
+          treeData: [],
+          defaultProps: {
+            children: "children",
+            label: "name",
+            disabled: this.disabledFn,
+          },
+          date: null,
+          activeId: "",
+          activeName: "",
+          selectList: [],
+          showSelectList: [],
+          tableData: [],
+          tableHeight: null,
+          page: 1,
+          size: 100,
+          total: 0,
+          loading: false,
+          treeLoading: false,
+          typeList: [],
+        };
+      },
+      mounted() {
+        this.tableHeight = document.getElementsByClassName("table")[0].offsetHeight;
+        this.getJZAllByClassId();
+        this.getDataType();
+      },
+      computed: {},
+      watch: {
+        selectVal(newVal) {
+          this.searchTree();
+        },
+        // page(newVal) {
+        //   this.searchTable();
+        // },
+        // size(newVal) {
+        //   this.searchTable();
+        // },
+        filterText(val) {
+          this.$refs.tree.filter(val);
+        },
+        date(val) {
+          console.log(val);
+        },
+      },
+      methods: {
+        //接口类型下拉
+        getDataType() {
+          getDataType().then((data) => {
+            console.log(data);
+            if (data) {
+              this.typeList = data;
+            }
+          });
+        },
+        // 下拉
+        getJZAllByClassId() {
+          getJZAllByClassId().then((data) => {
+            if (data) {
+              this.options = data;
+              if (data.length) {
+                this.selectVal = data[0].code;
+              }
+            }
+          });
+        },
+        // 查询树
+        searchTree() {
+          console.log(this.selectVal);
+          if (this.selectVal) {
+            const selectData = this.options.filter(
+              (item) => item.code === this.selectVal
+            );
+
+            if (selectData.length) {
+              const params = {
+                pfTag: selectData[0].tag,
+                treeId: selectData[0].code,
+              };
+
+              this.treeLoading = true;
+
+              getProductTree(params).then(({ data }) => {
+                if (data) {
+                  this.treeData = data;
+                }
+                this.treeLoading = false;
+              });
+            }
+          }
+        },
+        // 表格查询
+        searchFilter() {
+          this.page = 1;
+          const params = {
+            bizDate: this.queryParams.date,
+            type: this.queryParams.type,
+            startPage: this.page,
+            pageSize: this.size,
+          }
+          this.loading = true;
+          getList(params).then((data) => {
+            if (data) {
+              this.total = data.total;
+              this.tableData = data.data;
+              this.loading = false;
+            }
+          }).catch((err) => {
+            this.$message({
+              showClose: true,
+              message: "查询失败",
+              type: "error",
+            });
+            console.log(err);
+            this.loading = false;
+          });
+        },
+        // 分页/标签页查询
+        searchTable() {
+          const params = {
+            bizDate: this.queryParams.date,
+            type: this.queryParams.type,
+            startPage: this.page,
+            pageSize: this.size,
+          }
+          this.loading = true;
+          getList(params).then((data) => {
+            if (data) {
+              this.total = data.total;
+              this.tableData = data.data;
+              this.loading = false;
+            }
+          }).catch(() => {
+            this.$message({
+              showClose: true,
+              message: "查询失败",
+              type: "error",
+            });
+            this.loading = false;
+          });
+        },
+        // 查询树
+        filterNode(value, data) {
+          if (!value) return true;
+          return data.name.indexOf(value) !== -1;
+        },
+        // 选择树
+        checkChange(a, b) {
+          console.log(a, b);
+          let data = b.checkedNodes.filter((item) => item.leaf);
+          if (data.length > 10) {
+            this.$message({
+              showClose: true,
+              message: "最多能选中10个",
+              type: "warning",
+            });
+            this.$refs.tree.setCheckedNodes(this.selectList);
+          } else {
+            this.selectList = data;
+          }
+        },
+        // 树-禁用层级
+        disabledFn(data, node) {
+          if (!data.leaf) {
+            return true;
+          }
+          return false;
+        },
+        // 每页展示条数
+        handleSizeChange(val) {
+          this.size = val;
+          this.searchTable();
+        },
+        // 当前页
+        handleCurrentChange(val) {
+          console.log(`当前页: ${val}`);
+          this.page = val;
+          this.searchTable();
+        },
+        exportExcel() {
+
+          if (this.selectList.length) {
+            const data = this.selectList.map(item => item.pfId);
+            const params = {
+              bizDate: this.queryParams.date,
+              type: this.queryParams.type,
+              num: this.queryParams.num,
+              param: data,
+            };
+            downLoadFile(params);
+          } else {
+            this.$message({
+              showClose: true,
+              message: "请选择左侧树",
+              type: "warning",
+            });
+          }
+        },
+      },
+    });
+  </script>
+</body>
+
+</html>

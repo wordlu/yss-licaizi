@@ -1,0 +1,88 @@
+.app-container {
+  overflow: hidden;
+}
+
+.select-btn-box {
+  float: right;
+}
+
+.select-header{
+  margin: 0;
+  padding: 0;
+}
+
+.select-header .el-form-item__label{
+  line-height: 30px;
+}
+
+.standard-table-box {
+  flex:1;
+  /*height: 100%;*/
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.form-box{
+  flex:1;
+  overflow: hidden;
+  /*height: 100%;*/
+  /*overflow: scroll;*/
+}
+
+.form-table-box {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.table-box {
+  height: 100% !important;
+  /*flex: 1;*/
+}
+
+.table-box tr,.table-box th, .table-box td{
+  height: 40px !important;
+  padding: 0 !important;
+  line-height: 40px !important;
+}
+
+.table-box .el-input.is-disabled .el-input__inner{
+  color: inherit;
+}
+/* .el-form-item__content {
+  margin-bottom: 10px;
+} */
+
+.el-row-btn-box {
+  padding: 10px 20px 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.pagination {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: flex-end;
+}
+
+.el-table .warning-row {
+  background: oldlace;
+}
+
+.el-table .success-row {
+  background: #f0f9eb;
+}
+
+.cell-box .cell {
+  overflow: visible;
+}
+
+.btn-container {
+  padding-bottom: 0;
+}
+
+.filter-btn {
+  margin-right: 20px;
+}

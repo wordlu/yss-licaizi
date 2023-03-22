@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script type="text/javascript" src="../resources/babel/browser.min.js"></script>
+    <script type="text/javascript" src="../resources/babel-polyfill/dist/polyfill.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="../resources/vue/vue-2.5.17.js"></script>
+    <link rel="stylesheet" href="../resources/element-ui/lib/theme-chalk/index.css" />
+    <script src="../resources/element-ui/lib/index.js"></script>
+    <script src="../resources/axios/dist/axios.js"></script>
+    <script src="../resources/utils/helper.js"></script>
+    <script src="../resources/mailManagement/api.js"></script>
+    <!-- css -->
+    <link rel="stylesheet" href="../resources/utils/index.css" />
+    <link rel="stylesheet" href="../resources/mailManagement/index.css" />
+    <title>邮件管理</title>
+    <script>
+      var mdmRoot = '';
+    </script>
+  </head>
+
+  <body>
+    <div id="mainApp" style="display: none">
+      <el-form :model="queryParams" class="select-header" ref="ruleForm">
+        <el-row style="height: 80px">
+          <el-col :span="5" class="el-col-zidingyi">
+            <el-form-item prop="searchDate" label="起止日期：" label-width="auto">
+              <el-date-picker
+                v-model="queryParams.searchDate"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                value-format="yyyyMMdd"
+                unlink-panels
+                size="mini"
+                style="width: 260px; font-size: 12px"
+              >
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5" class="el-col-zidingyi">
+            <el-form-item prop="state" label="邮件状态：" label-width="auto">
+              <el-select
+                v-model="queryParams.state"
+                placeholder="请选择"
+                size="mini"
+                style="width: 220px"
+                clearable
+              >
+                <el-option key="1" label="已解析" value="1"> </el-option>
+                <el-option key="2" label="不解析" value="2"> </el-option>
+                <el-option key="3" label="待解析" value="3"> </el-option>
+                <el-option key="4" label="解析错误" value="4"> </el-option>
+                <el-option key="5" label="未建专户" value="5"> </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5" class="el-col-zidingyi">
+            <el-form-item prop="content" label="邮件内容：" label-width="auto">
+              <el-input v-model="queryParams.content" size="mini" style="width: 220px"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5" class="el-col-zidingyi">
+            <el-form-item prop="org" label="发送机构：" label-width="auto">
+              <el-select
+                v-model="queryParams.org"
+                placeholder="请选择"
+                size="mini"
+                style="width: 220px"
+                clearable
+              >
+                <el-option
+                  v-for="item in agencyOptionList"
+                  :label="item.keyName"
+                  :value="item.keyId"
+                  :key="item.keyId"
+                >
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="4" class="select-btn-box el-col-zidingyi">
+            <el-button type="primary" size="mini" @click="searchHandler">查询</el-button>
+            <el-button size="mini" @click="collectMailHandler">收取邮件</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+      <div class="table-content">
+        <el-table
+          :data="tableData"
+          height="80vh"
+          border
+          style="width: 100%"
+          :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+          size="mini"
+        >
+          <el-table-column type="index" label="序号" width="60" align="center"> </el-table-column>
+          <el-table-column label="操作" width="200" align="center">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="analysisClickHanlder(scope.row)">解析</el-button>
+              <el-button @click="seeBtnHandleClick(scope.row)" type="text" size="small">查看</el-button>
+            </template>
+          </el-table-column>
+          <el-table-column prop="state" label="邮件状态" width="180" align="center">
+            <template slot-scope="scope">
+              <div v-if="scope.row.state === '已解析'" style="color: rgb(6, 238, 130)">
+                {{scope.row.state}}
+              </div>
+              <div v-if="scope.row.state === '待解析'" style="color: rgb(89, 155, 216)">
+                {{scope.row.state}}
+              </div>
+              <div v-if="scope.row.state === '未建专户'" style="color: rgb(243, 92, 92)">
+                {{scope.row.state}}
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="mailTitle" label="邮件标题" align="center"> </el-table-column>
+          <el-table-column prop="sendDate" label="发送日期" align="center"> </el-table-column>
+          <el-table-column prop="addresser" label="发送人" align="center"> </el-table-column>
+          <el-table-column prop="org" label="发送机构" align="center"> </el-table-column>
+          <el-table-column prop="analysisErrorInfo" label="解析错误明细" align="center"> </el-table-column>
+          <el-table-column label="附件" align="center" width="240">
+            <template slot-scope="scope">
+              <el-button
+                type="text"
+                v-if="scope.row.fileName"
+                size="small"
+                @click="downLoadHandleClick(scope.row)"
+                >{{scope.row.fileName}}</el-button
+              >
+            </template>
+          </el-table-column>
+        </el-table>
+        <div class="pagination-box">
+          <el-pagination
+            background
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="page"
+            :page-sizes="[30, 500, 100, 200]"
+            :page-size="size"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+          >
+          </el-pagination>
+        </div>
+      </div>
+
+      <!-- 弹窗 -->
+      <el-dialog title="邮件内容" :visible.sync="seeModuleDialogVisible" width="55%">
+        <el-input disabled type="textarea" :rows="20" placeholder="请输入内容" v-model="seeModuleTextarea">
+        </el-input>
+      </el-dialog>
+    </div>
+    <script type="text/babel">
+      let vue = new Vue({
+        el: '#mainApp',
+        data() {
+          return {
+            queryParams: {
+              searchDate: [],
+              state: '',
+              content: '',
+              org: '',
+            },
+            tableData: [],
+            seeModuleDialogVisible: false,
+            seeModuleTextarea: '',
+            rule: {
+              required: true,
+              message: '此输入项为必输项!',
+              trigger: 'change',
+            },
+            agencyOptionList: [],
+            // 分页
+            page: 1,
+            total: 0,
+            size: 30,
+          };
+        },
+        created: function () {
+          document.getElementById('mainApp').style.display = 'block';
+        },
+        methods: {
+          searchHandler() {
+            const { searchDate, state, content, org } = this.queryParams;
+            mailSearchHandler({
+              beginDate: searchDate[0],
+              endDate: searchDate[1],
+              state: state,
+              content: content,
+              org: org,
+              rowCount: this.size,
+              startRow: this.page,
+            }).then(({ data, total }) => {
+              this.tableData = data;
+              this.total = total;
+            });
+            // this.$refs['ruleForm'].validate((valid) => {
+            //   if (valid) {
+            //     const { searchDate, state, content, org } = this.queryParams;
+            //     mailSearchHandler({
+            //       beginDate: searchDate[0],
+            //       endDate: searchDate[1],
+            //       state: state,
+            //       content: content,
+            //       org: org,
+            //     }).then(({ data }) => {
+            //       this.tableData = data;
+            //     });
+            //   } else {
+            //     // this.$message({
+            //     //   showClose: true,
+            //     //   message: '请填写完整信息',
+            //     //   type: 'error',
+            //     // });
+            //     return false;
+            //   }
+            // });
+          },
+          seeBtnHandleClick(row) {
+            const { id } = row;
+            mailViewHandler({ id }).then((string) => {
+              this.seeModuleDialogVisible = true;
+              this.seeModuleTextarea = string;
+            });
+          },
+          // 收取邮件
+          collectMailHandler() {
+            mailUpdateMailHandler().then((type) => {
+              if (type) {
+                this.$message({
+                  showClose: true,
+                  message: '邮件收取成功',
+                  type: 'success',
+                });
+                this.page = 1;
+                this.searchHandler();
+              } else {
+                this.$message({
+                  showClose: true,
+                  message: '邮件收取失败',
+                  type: 'error',
+                });
+              }
+            });
+          },
+          // 下载
+          downLoadHandleClick(row) {
+            downLoadFile(row.id, row.fileName, row.fileDir);
+          },
+          //分页
+          handleSizeChange(val) {
+            this.size = val;
+            this.page = 1;
+            this.searchHandler();
+          },
+          handleCurrentChange(val) {
+            this.page = val;
+            this.searchHandler();
+          },
+          analysisClickHanlder(row) {
+            mailAnalysis(row).then(({ data, message }) => {
+              if (data) {
+                this.$message({
+                  showClose: true,
+                  message: message,
+                  type: 'success',
+                });
+                this.searchHandler();
+              } else {
+                this.$message({
+                  showClose: true,
+                  message: message,
+                  type: 'error',
+                });
+              }
+            });
+          },
+        },
+        mounted: function () {
+          getSendingAgency().then((data) => {
+            this.agencyOptionList = data;
+          });
+          this.searchHandler();
+        },
+      });
+    </script>
+  </body>
+</html>

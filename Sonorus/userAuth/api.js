@@ -43,17 +43,14 @@ function downLoadFile(params) {
   form.submit();
 }
 
-// 下拉
+// 组合树下拉
 function getSelectData(params) {
-  return post(
-    newStrategicAccountRoot + "mdm/specialStrategy/allByClassId",
-    params
-  );
+  return get(newStrategicAccountRoot + "mdm/comTreeConfiguration/getUserAuthTreeId");
 }
 
 // 投资管理人
 function orgList() {
-  return post(newStrategicAccountRoot + "mdm/assets/orgList");
+  return get(newStrategicAccountRoot + "mdm/userAuthorityInfo/findOrgInfo");
 }
 
 // 托管人
@@ -119,9 +116,4 @@ function getcChecked() {
 // 左侧树
 function getProductTree(params) {
   return post(newStrategicAccountRoot + "mdm/comTreeConfiguration/getSynchroPfTree", params)
-}
-
-// 左侧树下拉
-function getJZAllByClassId() {
-  return post(newStrategicAccountRoot + "mdm/netWorth/treeList")
 }

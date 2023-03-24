@@ -43,10 +43,10 @@
             </el-form-item>
           </el-col>
           <el-col :span="6" class="el-col-zidingyi">
-            <el-form-item label="机构名称 :" prop="orgId" class="user-auth-form-item">
+            <el-form-item label="机构名称 :" prop="orgName" class="user-auth-form-item">
               <el-select
                 filterable
-                v-model="formInline.orgId"
+                v-model="formInline.orgName"
                 placeholder="机构名称"
                 size="mini"
                 clearable
@@ -54,9 +54,9 @@
               >
                 <el-option
                   v-for="item in orgList"
-                  :key="item.keyId"
-                  :label="item.keyName"
-                  :value="item.keyId"
+                  :key="item.orgId"
+                  :label="item.orgName"
+                  :value="item.orgId"
                 ></el-option>
               </el-select>
             </el-form-item>
@@ -127,6 +127,7 @@
             width="130"
             align="center"
             show-overflow-tooltip
+            sortable
           >
           </el-table-column>
           <el-table-column
@@ -134,6 +135,7 @@
             label="登录名称"
             width="150"
             align="center"
+            sortable
             show-overflow-tooltip
           >
           </el-table-column>
@@ -141,6 +143,7 @@
             prop="orgName"
             label="所属机构"
             align="center"
+            sortable
             show-overflow-tooltip
           >
           </el-table-column>
@@ -149,6 +152,7 @@
             label="是否授权"
             width="150"
             align="center"
+            sortable
             show-overflow-tooltip
           >
             <template slot-scope="scope">
@@ -162,6 +166,7 @@
             label="授权人"
             align="center"
             width="100"
+            sortable
             show-overflow-tooltip
           >
           </el-table-column>
@@ -169,6 +174,7 @@
             prop="mdfyTime"
             label="授权时间"
             align="center"
+            sortable
             show-overflow-tooltip
           >
           </el-table-column>
@@ -177,6 +183,7 @@
             label="审核人"
             align="center"
             width="100"
+            sortable
             show-overflow-tooltip
           >
           </el-table-column>
@@ -247,7 +254,6 @@
               ref="form"
               :model="currentData"
               class="form-box"
-              :disabled="!!currentData.disabled"
               :inline="true"
             >
               <el-form-item
@@ -262,10 +268,10 @@
                   style="width: 100%"
                 >
                   <el-option
-                    v-for="item in orgList"
-                    :key="item.keyId"
-                    :label="item.keyName"
-                    :value="item.keyId"
+                    v-for="item in UserAuthTreeIdList"
+                    :key="item.pfChildId"
+                    :label="item.pfChildName"
+                    :value="item.pfChildId"
                   ></el-option>
                 </el-select>
               </el-form-item>
@@ -284,8 +290,7 @@
                 >
                 </el-input>
                 <div class="btn-area">
-                  <el-button size="mini" plain type="primary">全部展开</el-button>
-                  <el-button size="mini" plain>全部收起</el-button>
+                  <el-button size="mini" plain type="primary" @click="expandHandle">{{this.expandAll ? '全部收起' : '全部展开'}}</el-button>
                 </div>
               </div>
               <div class="tree">
@@ -294,7 +299,7 @@
                   :data="treeData"
                   :props="defaultProps"
                   node-key="id"
-                  default-expand-all
+                  :default-expand-all="expandAll"
                   :filter-node-method="filterNode"
                   ref="tree"
                   show-checkbox
@@ -310,8 +315,8 @@
           slot="footer"
           class="dialog-footer"
         >
-          <el-button size="mini" @click="reset">返回</el-button>
           <el-button size="mini" type="primary" @click="submit">提交</el-button>
+          <el-button size="mini" @click="handleClose">返回</el-button>
         </span>
       </el-dialog>
     </div>
@@ -330,10 +335,14 @@
             },
             formInline: {
               userName: "",
-              orgId: ""
+              orgName: ""
             },
-            // 投资管理人
+            // 机构名称
             orgList: null,
+            // 组合树选择
+            UserAuthTreeIdList: null,
+            expandAll: true,
+
             // 托管人
             trustmngrList: null,
             // 估值日
@@ -374,12 +383,8 @@
         mounted() {
           this.tableHeight =
             document.getElementsByClassName("table-content")[0].offsetHeight;
-          // this.getSelectData(); 
+          this.getSelectData(); 
           this.org();
-          // this.trustmngr();
-          // this.getInvestMgrList();
-          // this.getOrgList();
-          // this.getcChecked();
           this.searchFilter()
           this.getJZAllByClassId();
         },
@@ -395,7 +400,7 @@
           },
           // 选择树
           selectVal(newVal) {
-              this.searchTree();
+            this.searchTree();
           },
           page(newVal) {
             this.searchFilter();
@@ -425,18 +430,22 @@
           },
         },
         methods: {
-          // 下拉
-          getJZAllByClassId() {
-              getJZAllByClassId().then((data) => {
-                  if (data) {
-                      this.options = data;
-                      if (data.length) {
-                          this.selectVal = data[0].code;
-                      }
-                  }
-              });
+          //tree展开收起
+          expandHandle() {
+            this.expandAll = !this.expandAll;
+            this.expandNodes(this.$refs.tree.store.root);
           },
-          // 查询树
+          // 遍历树形数据，设置每一项的expanded属性，实现展开收起
+          expandNodes(node) {
+            node.expanded = this.expandAll;
+            for (let i = 0; i < node.childNodes.length; i++) {
+              node.childNodes[i].expanded = this.expandAll;
+              if (node.childNodes[i].childNodes.length > 0) {
+                this.expandNodes(node.childNodes[i]);
+              }
+            }
+          },
+          // 过滤树
           filterNode(value, data) {
               if (!value) return true;
               return data.name.indexOf(value) !== -1;
@@ -459,63 +468,30 @@
           },
           // 查询树
           searchTree() {
-              if (this.selectVal) {
-                  const selectData = this.options.filter(
-                      (item) => item.code === this.selectVal
-                  );
-
-                  if (selectData.length) {
-                      const params = {
-                          pfTag: selectData[0].tag,
-                          treeId: selectData[0].code,
-                      };
-                      getProductTree(params).then(({code, data}) => {
-                        if (data) {
-                            this.treeData = data;
-                        }
-                      });
-                  }
+            if (this.selectVal) {
+              const selectData = this.UserAuthTreeIdList.filter(
+                  (item) => item.pfChildId === this.selectVal
+              );
+              if (selectData.length) {
+                  const params = {
+                      pfTag: selectData[0].pfTag,
+                      treeId: selectData[0].treeId,
+                      orgId: ''
+                  };
+                  getProductTree(params).then(({code, data}) => {
+                    if (data) {
+                        this.treeData = data;
+                    }
+                  });
               }
+            }
           },
-          // 获取下拉内容
+          // 组合树下拉
           getSelectData() {
-            const params = {
-              classIds: [
-                "TG_ORG",
-                "ZG_WAY",
-                "GZ_DAY",
-                "WT_PERSON",
-                "PF_EXT",
-                "Asset_Type",
-                "is_check",
-              ],
-            };
-            getSelectData(params).then((data) => {
-              console.log(data);
+            getSelectData().then((data) => {
               if (data) {
-                //this.tgorgList = data.TG_ORG;
-                this.wayList = data.ZG_WAY;
-                this.dayList = data.GZ_DAY;
-                this.personList = data.WT_PERSON;
-                this.extList = data.PF_EXT;
-                this.assetTypeList = data.Asset_Type;
-                this.cChecked = data.is_check;
-              }
-            });
-          },
-          // 托管人下拉数据
-          trustmngr() {
-            trustmngrList().then((data) => {
-              if (data) {
-                this.trustmngrList = data;
-              }
-            });
-          },
-          // 投顾机构下拉数据
-          getOrgList() {
-            getOrgList().then((data) => {
-              if (data) {
-                this.tgorgList = data;
+                this.UserAuthTreeIdList = data
+                this.selectVal = data[0].pfChildId;
               }
             });
           },
@@ -528,30 +504,13 @@
             });
           },
 
-          // 投资管理人下拉数据
+          // 机构名称下拉数据
           org() {
             orgList().then((data) => {
               if (data) {
                 this.orgList = data;
               }
             });
-          },
-          // 投资经理下拉数据
-          getInvestMgrList() {
-            investMgrList().then((data) => {
-              if (data) {
-                this.investMgrList = data;
-              }
-            });
-          },
-          // 导出
-          exportExcel() {
-            const params = {
-              ...this.formInline,
-              startPage: this.page,
-              pageSize: this.size,
-            };
-            downLoadFile(params);
           },
           // 查询
           searchFilter() {
@@ -574,16 +533,11 @@
                 });
             });
           },
-          // 重置
+          // 查询重置
           resetHandler() {
             this.$refs.searchForm.resetFields();
           },
-          // 新增
-          add() {
-            this.visible = true;
-            this.title = "用户授权";
-          },
-          // 编辑
+          // 授权
           editRow(row) {
             specialInfo({ id: row.id }).then(({ data }) => {
               if (data) {
@@ -685,11 +639,7 @@
             this.visible = false;
             this.currentData = {};
           },
-          // 复位
-          reset() {
-            this.currentData = JSON.parse(JSON.stringify(this.resetData));
-          },
-          // 提交
+          // 弹窗提交
           submit() {
             console.log(this.currentData);
             if (this.currentData.chgDate > this.currentData.endDate) {
@@ -732,53 +682,7 @@
               }
             });
           },
-          // 弹出框-扩展-新增
-          formAdd() {
-            console.log(11111, this.currentData);
-            if (this.currentData.infoExts && this.currentData.infoExts.length) {
-              this.currentData.infoExts.push({
-                index: this.currentData.infoExts.length,
-              });
-            } else {
-              this.currentData = {
-                ...this.currentData,
-                infoExts: [{ index: 0 }],
-              };
-            }
-          },
-          // 弹出框-扩展-删除
-          formDelete() {
-            if (this.infoExtsCheckBoxData && this.infoExtsCheckBoxData.length) {
-              const infoExts = this.currentData.infoExts.filter((item) => {
-                let isTrue = false;
-                for (var i = 0; i < this.infoExtsCheckBoxData.length; i++) {
-                  if (this.infoExtsCheckBoxData[i].index === item.index) {
-                    isTrue = true;
-                  }
-                }
-                return !isTrue;
-              });
-              this.currentData.infoExts = infoExts;
-              this.$message({
-                showClose: true,
-                message: "删除成功",
-                type: "success",
-              });
-            } else {
-              this.$message({
-                showClose: true,
-                message: "没有可删除的选项",
-                type: "warning",
-              });
-            }
-          },
-          // 扩展选择项变化
-          handleSelectionChange(val) {
-            this.infoExtsCheckBoxData = val;
-          },
-          handleAllSelect(val) {
-            console.log(222, val);
-          },
+
         },
       });
     </script>

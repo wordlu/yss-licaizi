@@ -80,7 +80,7 @@ function downLoadExcel(data, filename, header, params, title, type) {
 
 // axios.defaults.baseURL = 'http://172.20.10.5:8089/'
 // axios.defaults.baseURL = 'http://192.168.124.5:8089/'
-axios.defaults.baseURL = 'http://192.168.111.135:8089/'
+axios.defaults.baseURL = 'http://192.168.111.18:8089/'
 axios.defaults.timeout = 90000
 
 function get(url, params) {

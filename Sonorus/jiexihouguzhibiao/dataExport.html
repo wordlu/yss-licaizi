@@ -1,0 +1,452 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script type="text/javascript" src="../resources/babel/browser.min.js"></script>
+  <script type="text/javascript" src="../resources/babel-polyfill/dist/polyfill.js"></script>
+  <script src="../resources/vue/vue-2.5.17.js"></script>
+  <link rel="stylesheet" href="../resources/element-ui/lib/theme-chalk/index.css" />
+  <script src="../resources/element-ui/lib/index.js"></script>
+  <script src="../resources/axios/dist/axios.js"></script>
+
+  <script src="../resources/utils/helper.js"></script>
+  <script src="./api.js"></script>
+  <!-- css -->
+  <link rel="stylesheet" href="../resources/utils/index.css" />
+  <link rel="stylesheet" href="./index.css" />
+  <title>接口数据导出</title>
+  <script type="text/javascript">
+    var netWorthSubjectRoot = "";
+  </script>
+</head>
+
+<body>
+  <div id="mainApp">
+    <div class="container">
+        <div class="tree-content">
+            <el-select
+                    v-model="selectVal"
+                    placeholder="树形结构请选择"
+                    size="mini"
+                    style="width: 90%"
+            >
+                <el-option
+                        v-for="item in options"
+                        :key="item.code"
+                        :label="item.name"
+                        :value="item.code"
+                >
+                </el-option>
+            </el-select>
+
+            <el-input
+                    placeholder="搜索"
+                    size="mini"
+                    v-model="filterText"
+                    style="margin-top: 10px; width: 90%"
+            >
+            </el-input>
+
+            <div class="tree">
+                <el-tree
+                        class="filter-tree"
+                        :data="treeData"
+                        :props="defaultProps"
+                        node-key="id"
+                        default-expand-all
+                        :filter-node-method="filterNode"
+                        ref="tree"
+                        show-checkbox
+                        @check="checkChange"
+                >
+                </el-tree>
+            </div>
+        </div>
+        <div class="table-content">
+            <div class="search-container">
+                <div>
+              <span style="color: #606266; font-size: 14px; padding-right: 10px"
+              >估值日期 :
+              </span>
+                    <el-date-picker
+                            v-model="date"
+                            type="date"
+                            value-format="yyyyMMdd"
+                            placeholder="选择日期"
+                            :picker-options="pickerOptions"
+                            size="mini"
+                            :clearable="false"
+                    >
+                    </el-date-picker>
+                </div>
+                <div>
+                    <el-button type="primary" size="mini" @click="searchFilter"
+                    >查询
+                    </el-button>
+                    <el-button type="primary" size="mini" @click="toggleRowExpansion">
+                        全部{{ isExpansion ? "收缩" : "展开" }}
+                    </el-button>
+                    <el-button type="info" size="mini" @click="resetHandler">重置</el-button>
+                    <el-button
+                            v-show="authbtton.indexOf('export') > 0"
+                            type="primary"
+                            size="mini"
+                            @click="exportExcel"
+                    >解析后导出
+                    </el-button>
+                    <el-button
+                            v-show="authbtton.indexOf('downloadFile') > 0"
+                            type="primary"
+                            size="mini"
+                            @click="exportExcelSrc"
+                    >源文件导出
+                    </el-button>
+                </div>
+            </div>
+            <el-tabs class="tabs" v-model="activeId" @tab-click="handleClick">
+                <el-tab-pane
+                        v-for="item in showSelectList.slice(0,10)"
+                        :key="item.id"
+                        :label="item.name"
+                        :name="item.id"
+                        :value="item.id"
+                ></el-tab-pane>
+            </el-tabs>
+            <div class="table">
+                <el-table :data="tableData" border style="width: 100%" class="table-box" :height="tableHeight"
+                          :header-cell-style="{background:'#eef1f6',color:'#606266',fontSize:'12px'}"
+                          :row-style="{fontSize:'12px'}"
+                          row-key="cKmdm"
+                          border
+                          :tree-props="{children: 'children', hasChildren: 'hasChildren'}"
+                          v-loading="loading" ref="dataTreeList">
+
+
+                    <el-table-column prop="cKmdm" label="科目代码" fixed align="left" width="200"></el-table-column>
+                    <el-table-column prop="cKmmc" label="科目名称" fixed align="left" width="200"></el-table-column>
+                    <el-table-column prop="cKmlv" label="科目层级" align="right" width="150"
+                                     :filters="[{text: '一级', value: 1}, {text: '二级', value: 2}, {text: '三级', value: 3}, {text: '四级', value: 4}]"
+                                     :filter-method="filterHandler"
+                    ></el-table-column>
+                    <el-table-column prop="assetCode" label="资产代码" align="right" width="150"></el-table-column>
+                    <el-table-column prop="assetType" label="资产类型" align="right" width="150"></el-table-column>
+                    <el-table-column prop="nHldamt" label="持仓数量" align="right" width="150"></el-table-column>
+                    <el-table-column prop="nHldcst" label="原币持仓成本" align="right" width="150"></el-table-column>
+                    <el-table-column prop="nHldcstLocl" label="本币持仓成本" align="right" width="150"></el-table-column>
+                    <el-table-column prop="nHldmkv" label="原币持仓市值" align="right" width="150"></el-table-column>
+                    <el-table-column prop="nHldmkvLocl" label="本币持仓市值" align="right" width="150"></el-table-column>
+                    <el-table-column prop="nHldvva" label="原币证券估值" align="right" width="150"></el-table-column>
+                    <el-table-column prop="nHldvvaL" label="本币证券估值" align="right" width="150"></el-table-column>
+                    <el-table-column prop="cCuryCode" label="估值币种" align="center" width="150"></el-table-column>
+                    <el-table-column prop="nValrate" label="货币估值汇率" align="right" width="150"></el-table-column>
+                    <el-table-column prop="nPriceCost" label="单位成本" align="right" width="150"></el-table-column>
+                    <el-table-column prop="nValprice" label="证券估值行情" align="right" width="150"></el-table-column>
+                    <el-table-column prop="nCbJzBl" label="本币成本占比(%)" :formatter="formatter_nCbJzBl" align="right"
+                                     width="150"></el-table-column>
+                    <el-table-column prop="nSzJzBl" label="本币市值占比(%)" :formatter="formatter_nSzJzBl" align="right"
+                                     width="150"></el-table-column>
+                    <el-table-column prop="nZcBl" label="资产占比(%)" :formatter="formatter_nZcBl" align="right"
+                                     width="150"></el-table-column>
+                    <el-table-column prop="cSubpend" label="停牌信息" align="center" width="150"></el-table-column>
+                    <el-table-column prop="cRights" label="权益信息,百元债券利息" align="center" width="150"></el-table-column>
+                    <el-table-column prop="cIvtClss" label="投资分类" align="center" width="150"></el-table-column>
+                    <el-table-column prop="cMktCode" label="交易市场" align="center" width="150"></el-table-column>
+                    <el-table-column prop="cMlAttr" label="受限流通类别" align="center" width="150"></el-table-column>
+                    <el-table-column prop="orgId" label="机构代码" align="left" width="150"></el-table-column>
+                    <el-table-column prop="pfId" label="策略专户代码" align="center" width="150"></el-table-column>
+                    <el-table-column prop="dBiz" label="估值日期" align="center" width="150"></el-table-column>
+                </el-table>
+                </el-table>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/babel">
+  new Vue({
+      el: "#mainApp",
+      data() {
+          return {
+              pickerOptions: {
+                  disabledDate(time) {
+                      return time.getTime() > Date.now();
+                  },
+              },
+              selectVal: "",
+              // 下拉框
+              options: [],
+              filterText: "",
+              treeData: [],
+              defaultProps: {
+                  children: "children",
+                  label: "name",
+                  disabled: this.disabledFn,
+              },
+              date: null,
+              authbtton: [],
+              activeId: "",
+              activeName: "",
+              selectList: [],
+              showSelectList: [],
+              tableData: [],
+              tableHeight: null,
+              page: 1,
+              size: 30,
+              total: 0,
+              loading: false,
+              isExpansion: false
+          };
+      },
+      mounted() {
+          // this.authbtton = buttons;
+          // const height =
+          //     document.getElementsByClassName("table-content")[0].offsetHeight -
+          //     document.getElementsByClassName("search-container")[0]
+          //         .offsetHeight -
+          //     document.getElementsByClassName("tabs")[0].offsetHeight -
+          //     5;
+          // this.tableHeight = height - 80;
+          this.tableHeight = document.getElementsByClassName("table")[0].offsetHeight;
+          this.getJZAllByClassId();
+      },
+      computed: {},
+      watch: {
+          selectVal(newVal) {
+              this.searchTree();
+          },
+          filterText(val) {
+              this.$refs.tree.filter(val);
+          },
+          date(val) {
+              console.log(val);
+          },
+      },
+      methods: {
+          formatter_nCbJzBl(rows, column) {
+              if (rows.nCbJzBl === null) {
+                  return rows.nCbJzBl;
+              } else {
+                  var value = rows.nCbJzBl * 100;
+                  var ss = value.toFixed(4);
+                  return ss;
+              }
+          },
+          formatter_nSzJzBl(rows, column) {
+
+              if (rows.nSzJzBl === null) {
+                  return rows.nSzJzBl;
+              } else {
+                  var value = rows.nSzJzBl * 100;
+                  var ss = value.toFixed(4);
+                  return ss;
+              }
+          },
+          formatter_nZcBl(rows, column) {
+
+              if (rows.nZcBl === null) {
+                  return rows.nZcBl;
+              } else {
+                  var value = rows.nZcBl * 100;
+                  var ss = value.toFixed(4);
+                  return ss;
+              }
+          },
+          toggleRowExpansion() {
+              this.isExpansion = !this.isExpansion;
+              this.toggleRowExpansionAll(this.tableData, this.isExpansion);
+          },
+          toggleRowExpansionAll(data, isExpansion) {
+              data.forEach((item) => {
+                  this.$refs.dataTreeList.toggleRowExpansion(item, isExpansion);
+                  if (item.children !== undefined && item.children !== null) {
+                      this.toggleRowExpansionAll(item.children, isExpansion);
+                  }
+              });
+          },
+
+          // 下拉
+          getJZAllByClassId() {
+              getJZAllByClassId().then((data) => {
+                  if (data) {
+                      this.options = data;
+                      if (data.length) {
+                          this.selectVal = data[0].code;
+                      }
+                  }
+              });
+          },
+          // 查询树
+          searchTree() {
+            debugger
+              if (this.selectVal) {
+                  const selectData = this.options.filter(
+                      (item) => item.code === this.selectVal
+                  );
+
+                  if (selectData.length) {
+                      const params = {
+                          pfTag: selectData[0].tag,
+                          treeId: selectData[0].code,
+                      };
+                      getProductTree(params).then(({data}) => {
+                          if (data) {
+                              this.treeData = data;
+                          }
+                      });
+                  }
+              }
+          },
+          // 表格查询
+          searchFilter() {
+              if (this.selectList.length && this.date) {
+                  /* this.page = 1;
+                   this.size = 30;*/
+                  this.showSelectList = JSON.parse(JSON.stringify(this.selectList));
+                  this.activeId = this.selectList[0].id;
+                  this.activeName = this.selectList[0].name;
+                  const datas = this.selectList.map(item => item.id);
+                  console.log(33333, this.date);
+                  const params = {
+                      param: datas,
+                      customerCode: this.activeId,
+                      startDate: this.date,
+                      endDate: this.date,
+                      // startPage: this.page,
+                      //  pageSize: this.size,
+                  };
+                  this.loading = true;
+                  getList(params).then((data) => {
+                      if (data) {
+                          // this.total = data.total;
+                          this.tableData = data.data;
+                          this.loading = false;
+                      }
+                  });
+              } else {
+                  this.$message({
+                      showClose: true,
+                      message: "请选择左侧树和时间进行查询",
+                      type: "warning",
+                  });
+              }
+          },
+          // 分页/标签页查询
+          searchTable() {
+              const params = {
+                  customerCode: this.activeId,
+                  startDate: this.date,
+                  endDate: this.date,
+                  // startPage: this.page,
+                  //pageSize: this.size,
+              };
+              this.loading = true;
+              getList(params).then((data) => {
+                  if (data) {
+                      //this.total = data.total;
+                      this.tableData = data.data;
+                      this.loading = false;
+                  }
+              });
+          },
+          // 查询树
+          filterNode(value, data) {
+              if (!value) return true;
+              return data.name.indexOf(value) !== -1;
+          },
+          // 点击tab
+          handleClick(tab, event) {
+              console.log(111111, tab, event, this.activeId);
+              this.activeName = tab.label;
+              // this.page = 1;
+              // this.size = 30;
+              // this.total = 0;
+              this.searchTable();
+          },
+          // 选择树
+          checkChange(a, b) {
+              console.log(a, b);
+              let data = b.checkedNodes.filter((item) => item.leaf);
+              /*    if (data.length > 10) {
+                      this.$message({
+                          showClose: true,
+                          message: "最多能选中10个",
+                          type: "warning",
+                      });
+                      this.$refs.tree.setCheckedNodes(this.selectList);
+                  } else {
+                      this.selectList = data;
+                  }*/
+              this.selectList = data;
+          },
+          // 树-禁用层级
+          disabledFn(data, node) {
+              /*  if (!data.leaf) {
+                    return true;
+                }*/
+              return false;
+          },
+          // 每页展示条数
+          handleSizeChange(val) {
+              this.size = val;
+              this.searchTable();
+          },
+          // 重置
+          resetHandler() {
+              this.date = null
+          },
+          // 当前页
+          handleCurrentChange(val) {
+              console.log(`当前页: ${val}`);
+              this.page = val;
+              this.searchTable();
+          },
+          filterHandler(value, row, column) {
+              const property = column['property'];
+              return row[property] === value;
+          },
+          exportExcel() {
+              /* const datas = this.selectList.map(item => ({id: item.id, name: item.name}));*/
+              const datas = this.selectList.map(item => item.id);
+              if (this.tableData.length) {
+                  const params = {
+                      param: datas,
+                      fileName: this.activeName,
+                      customerCode: this.activeId,
+                      startDate: this.date,
+                      endDate: this.date,
+                  };
+                  downLoadFile(params);
+              } else {
+                  this.$message({
+                      showClose: true,
+                      message: "暂时没可导出的数据",
+                      type: "error",
+                  });
+              }
+          },
+          exportExcelSrc() {
+              /* const datas = this.selectList.map(item => ({id: item.id, name: item.name}));*/
+              const datas = this.selectList.map(item => item.id);
+              if (this.tableData.length) {
+                  const params = {
+                      param: datas,
+                      fileName: this.activeName,
+                      customerCode: this.activeId,
+                      startDate: this.date,
+                      endDate: this.date,
+                  };
+                  downLoadFileSrc(params);
+              } else {
+                  this.$message({
+                      showClose: true,
+                      message: "暂时没可导出的数据",
+                      type: "error",
+                  });
+              }
+          },
+      },
+  });
+</script>
+</body>
+
+</html>

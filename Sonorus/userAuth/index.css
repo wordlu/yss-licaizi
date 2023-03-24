@@ -1,0 +1,198 @@
+#mainApp {
+  overflow: hidden;
+}
+
+.user-auth-select-header{
+  margin: 0;
+  background: #F5F6FA;
+}
+.select-btn-box {
+  float: right;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.form-box {
+  display: flex;
+}
+
+.form-box>.el-form-item {
+  margin-bottom: 10px;
+}
+
+.table-content{
+  overflow: hidden;
+}
+
+.table-box{
+  height: 100% !important;
+}
+
+.table-box tr,.table-box td{
+  height: 30px !important;
+  padding: 0 !important;
+  line-height: 30px !important;
+}
+
+.table-box th{
+  height: 40px !important;
+  padding: 0 !important;
+  line-height: 40px !important;
+}
+
+.dialog{
+  height: 80vh;
+  overflow-y: scroll;
+}
+
+.el-form--inline .el-form-item__label{
+  height: 30px;
+}
+
+.el-dialog__body{
+  padding: 5px 10px;
+}
+
+.table-box tr,
+.table-box td,
+.table-box th {
+  height: 40px !important;
+  padding: 0 !important;
+  line-height: 40px !important;
+}
+
+/* .form-content {
+  height: 80%;
+  overflow-y: scroll;
+} */
+
+.user-auth-select-header .el-form-item__label{
+  height: auto;
+  line-height: 30px;
+}
+
+.btn-box{
+  display: flex;
+  justify-content: flex-start;
+  /* margin-top: 5px;
+  margin-bottom: 5px; */
+  height: 60px;
+  align-items: center;
+}
+
+.btn-box button {
+  height: 28px;
+}
+
+.btn-box button.search {
+  margin-left: 20px;
+  /* background-color: #3F67E0; */
+}
+
+.btn-box button.reset {
+  /* background-color: #fff; */
+  /* color: #334066; */
+}
+
+.table-btn-area {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.table-btn-area button.audit {
+  width: 60px;
+  height: 28px;
+}
+
+.search-row-box{
+  display: flex;
+}
+
+.search-col{
+  flex:1;
+  margin-right: 10px;
+}
+
+.user-auth-select-header .el-form-item__content{
+  width: 100%;
+}
+
+.user-auth-form-item {
+  display: flex;
+  align-items: center;
+}
+
+.user-auth-form-item .el-form-item__label {
+  width: 105px;
+  overflow: hidden;
+}
+
+.user-auth-dialog .el-dialog__header {
+  padding: 16px 24px;
+  color: rgba(0, 0, 0, 0.85);
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  border-radius: 2px 2px 0 0;
+}
+
+.user-auth-dialog .el-dialog__body {
+  padding: 10px 24px;
+}
+
+.user-auth-dialog .item-title {
+  box-shadow: inset 0 -1px 0 0 #EBEEF5;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.tree-area .tree-filter {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  justify-content: space-between;
+}
+
+.tree-filter .btn-area {
+  display: flex;
+  align-items: center;
+}
+
+.tree-filter .el-input--mini {
+  margin-top: 0px !important;
+}
+
+
+.el-icon-arrow-left,
+.el-icon-arrow-right {
+    line-height: inherit;
+}
+
+.el-tree-node > .el-tree-node__children {
+    overflow: visible;
+}
+
+.el-tree-node__label {
+    font-size: 12px;
+}
+
+.user-auth-dialog .el-dialog__footer {
+  position: sticky;
+  bottom: 0px;
+  text-align: right;
+  background-color: #fff;
+  z-index: 1;
+}
+
+.user-auth-dialog .el-dialog__header {
+  position: sticky;
+  top: 0px;
+  background-color: #fff;
+  z-index: 2;
+}
